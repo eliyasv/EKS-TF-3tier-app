@@ -1,13 +1,33 @@
-#  End-to-End 3-Tier Application CI/CD with Kubernetes, AWS EKS, Jenkins & Argo CD (GitOps)
+## 3-Tier Application CI/CD with Kubernetes, AWS EKS, Jenkins & Argo CD (GitOps)
 
-This project implements a robust CI/CD pipeline for a 3-tier application using **Jenkins**, **AWS EKS**, and **Argo CD**. It separates **backend** and **frontend** workflows and automates every phase from code analysis to GitOps-based deployment.
+This project demonstrates a production-style deployment of a containerized 3-tier application on AWS EKS using Jenkins CI pipelines for application delivery and Argo CD for GitOps-based Kubernetes deployment.
+
+The platform infrastructure is provisioned separately using Terraform (see EKS-TF-infra project).
+
+This repository focuses on application delivery workflows on Kubernetes.
 
 ---
 
-## ✅ Features
+### Architecture Overview
+
+The application follows a standard 3-tier architecture:
+
+Frontend 
+Backend 
+Database 
+
+Deployment responsibilities are separated:
+
+Infrastructure → Terraform
+Frontend → Jenkins CI pipeline
+Backend → Jenkins CI pipeline
+Database → GitOps (Argo CD)
+Cluster → AWS EKS
+
+### Features
 
 - Independent pipelines for **backend** and **frontend**
-- GitOps-powered deployments with Argo CD
+- GitOps-managed deployments with Argo CD
 - Automated static code analysis using **SonarQube**
 - Dependency scanning with **OWASP Dependency-Check**
 - Vulnerability scanning via **Trivy**
@@ -17,9 +37,45 @@ This project implements a robust CI/CD pipeline for a 3-tier application using *
 
 ---
 
-## ⚙️ Prerequisites
+#### Frontend & Backend CI Pipeline (Jenkins)
 
-### Jenkins Requirements
+Both pipeline includes:
+
+- Code Quality
+- SonarQube analysis
+- Quality gate validation
+- Security Scanning
+- OWASP Dependency-Check
+- Trivy filesystem scan
+- Trivy container image scan
+
+Container Workflow
+
+- Docker image build
+- Image tagging using Jenkins build number
+- Push image to Amazon ECR
+
+GitOps Deployment Trigger
+
+- Kubernetes deployment manifest updated with new image tag
+- Changes committed to Git repository
+- Argo CD automatically synchronizes deployment to EKS
+
+#### Database Deployment (GitOps)
+
+The database layer is deployed as a Kubernetes StatefulSet.
+
+Characteristics:
+- Persistent storage using StatefulSet
+- Declarative Kubernetes manifests stored in Git
+- Managed using Argo CD synchronization
+- No CI build pipeline required
+
+---
+
+### Prerequisites
+
+#### Jenkins server Requirements
 
 Ensure Jenkins is configured with:
 
@@ -45,7 +101,7 @@ Ensure Jenkins is configured with:
 
 ---
 
-## 🔐 Jenkins Environment Variables
+### Jenkins Environment Variables
 
 These environment variables and credentials should be configured in Jenkins:
 
@@ -61,26 +117,7 @@ These environment variables and credentials should be configured in Jenkins:
 
 ---
 
-## 🧪 Pipeline Flow
-
-Each app tier (`backend` and `frontend`) follows this pipeline:
-
-1. **Code Quality Analysis** – using SonarQube
-2. **Dependency Security Scan** – with OWASP Dependency-Check
-3. **Trivy file Scan** – for filesystem analysis 
-4. **Docker Build & Push** – image tagged and pushed to ECR
-5. **Trivy image Scan** – for Docker image vulnerabilities
-5. **Kubernetes Manifest Update** – deployment YAML updated with new tag
-6. **Argo CD Sync** – deployment triggered to EKS automatically via GitOps
-
-
-Database
-
-- Deployed as a **Kubernetes StatefulSet** for persistent storage
-- No build pipeline, configured manualy in ArgoCD
----
-
-## 🛠️ Usage
+### Usage
 
 - Pipelines support both **manual** and **automated** triggers.
 - Backend and frontend can build and deploy **in parallel**.
@@ -90,7 +127,7 @@ Database
 
 ---
 
-## 🎯 Customization Tips
+### Customization Tips
 
 - **Security Rules**: Tune SonarQube and Trivy policies for stricter or more lenient scanning.
 - **Quality Gates**: Set `abortPipeline: true` to fail builds on SonarQube quality gate failure.
@@ -100,16 +137,16 @@ Database
 
 ---
 
-## 🧩 Troubleshooting
+### Troubleshooting
 
-- ✅ Ensure all Jenkins credentials and tools are correctly configured.
-- 🔍 Verify Jenkins agents have access to SonarQube, GitHub, and ECR.
-- 🔁 Check Argo CD is properly syncing with the Git repository.
-- 🔐 Ensure Argo CD and Jenkins have necessary Kubernetes access.
+-  Ensure all Jenkins credentials and tools are correctly configured.
+-  Verify Jenkins agents have access to SonarQube, GitHub, and ECR.
+-  Check Argo CD is properly syncing with the Git repository.
+-  Ensure Argo CD and Jenkins have necessary Kubernetes access.
 
 ---
 
-## 📦 Tech Stack
+### Tech Stack
 
 - **CI/CD**: Jenkins
 - **GitOps Deployment**: Argo CD

@@ -7,41 +7,48 @@ The platform infrastructure is provisioned separately using Terraform (see EKS-T
 This repository focuses on application delivery workflows on Kubernetes.
 
 ---
+### Directory Overview
+
+     1 EKS-TF-3tier-app/
+     2 ├── App-Code/          # Application source code
+     3 ├── Jenkins-pipeline/  # CI/CD automation
+     4 ├── k8s/               # Kubernetes deployment configs
+     5 └── README.md          # Documentation
 
 ### Architecture Overview
 
-The application follows a standard 3-tier architecture:
+    ┌────────────┬────────────┬─────────────────┬──────────────────────┐
+    │ Tier       │ Component  │ Technology      │ K8s Resource         │
+    ├────────────┼────────────┼─────────────────┼──────────────────────┤
+    │ Frontend   │ React UI   │ Node.js + React │ Deployment + Service │
+    │ Backend    │ REST API   │ Express.js      │ Deployment + Service │
+    │ Database   │ MongoDB    │ mongo:6         │ StatefulSet + PVC    │
+    │ Networking │ Ingress    │ AWS ALB         │ Ingress              │
+    │ Storage    │ Persistent │ AWS EBS gp3     │ StorageClass + PVC   │
+    │ CI/CD      │ Automation │ Jenkins         │ Jenkinsfile          │
+    └────────────┴────────────┴─────────────────┴──────────────────────┘
 
-Frontend 
-Backend 
-Database 
+    
+#### This setup enables:
 
-Deployment responsibilities are separated:
+- Scalability - Multiple replicas of frontend/backend
+- High Availability - Health probes + rolling updates
+- Persistence - MongoDB data survives pod restarts
+- Security - Secrets for credentials, isolated namespace
+- Automation - CI/CD pipeline for continuous deployment
 
-Infrastructure → Terraform
-Frontend → Jenkins CI pipeline
-Backend → Jenkins CI pipeline
-Database → GitOps (Argo CD)
-Cluster → AWS EKS
+#### Deployment responsibilities are separated:
 
-### Features
-
-- Independent pipelines for **backend** and **frontend**
-- GitOps-managed deployments with Argo CD
-- Automated static code analysis using **SonarQube**
-- Dependency scanning with **OWASP Dependency-Check**
-- Vulnerability scanning via **Trivy**
-- Docker image publishing to **Amazon ECR**
-- Auto-update of Kubernetes manifests on successful builds
-- Continuous delivery via Argo CD to **AWS EKS**
-
----
-
+- Infrastructure → Terraform
+- Frontend & Backend→ Jenkins CI pipeline
+- Database → GitOps (Argo CD)
+- Cluster → AWS EKS
+      
 #### Frontend & Backend CI Pipeline (Jenkins)
 
 Both pipeline includes:
 
-- Code Quality
+- Code Quality check
 - SonarQube analysis
 - Quality gate validation
 - Security Scanning
@@ -51,7 +58,7 @@ Both pipeline includes:
 
 Container Workflow
 
-- Docker image build
+- Docker image build (multistage for optimised image)
 - Image tagging using Jenkins build number
 - Push image to Amazon ECR
 
@@ -70,6 +77,33 @@ Characteristics:
 - Declarative Kubernetes manifests stored in Git
 - Managed using Argo CD synchronization
 - No CI build pipeline required
+
+---
+
+### App's Flow
+
+    ┌──────────────────────────────────────────────────────────────┐
+    │  User clicks "Add Task" on ignus.xyz                         │
+    └──────────────────────────────────────────────────────────────┘
+         │
+      ┌─────────────┐
+      │  Frontend   │  React sends: POST /api/tasks
+      │  (Pod:80)   │  { title: "Call friend" }
+      └─────────────┘
+         │
+      ┌─────────────┐
+      │  Backend    │  1. Validate task title
+      │  (Pod:5000) │  2. Check user authenticated
+      |             │  3. Add createdAt timestamp
+      |             │  4. Build MongoDB query
+      └─────────────┘
+         │
+      ┌─────────────┐
+      │  MongoDB    │  1. Store in tasks collection
+      │  (Pod:27017)│  2. Return saved document
+      └─────────────┘
+         │
+       Response flows back to user 
 
 ---
 
@@ -95,10 +129,13 @@ Ensure Jenkins is configured with:
 
 ### Argo CD Requirements
 
-- Argo CD installed and running in the Kubernetes cluster
+- Argo CD installed and running
 - Proper access configured to monitor your Git repository
 - Applications created and configured to apply manifests to the EKS cluster
 
+### Ingress
+
+- Ensure Ingree controller is installed and configured
 ---
 
 ### Jenkins Environment Variables
@@ -123,11 +160,11 @@ These environment variables and credentials should be configured in Jenkins:
 - Backend and frontend can build and deploy **in parallel**.
 - Kubernetes deployments always point to the **latest image**.
 - Argo CD ensures **cluster state matches Git** automatically.
-- StatefulSet changes are also GitOps-managed
+- StatefulSet changes are GitOps-managed
 
 ---
 
-### Customization Tips
+#### Further improvements and sugestions 
 
 - **Security Rules**: Tune SonarQube and Trivy policies for stricter or more lenient scanning.
 - **Quality Gates**: Set `abortPipeline: true` to fail builds on SonarQube quality gate failure.
@@ -136,28 +173,6 @@ These environment variables and credentials should be configured in Jenkins:
 - **Prometheuse and Grafana**: Set up and configure Prometheus and Grafana for montoring
 
 ---
-
-### Troubleshooting
-
--  Ensure all Jenkins credentials and tools are correctly configured.
--  Verify Jenkins agents have access to SonarQube, GitHub, and ECR.
--  Check Argo CD is properly syncing with the Git repository.
--  Ensure Argo CD and Jenkins have necessary Kubernetes access.
-
----
-
-### Tech Stack
-
-- **CI/CD**: Jenkins
-- **GitOps Deployment**: Argo CD
-- **Registry**: Amazon ECR
-- **Static Analysis**: SonarQube
-- **Dependency Scanning**: OWASP Dependency-Check
-- **Container Scanning**: Trivy
-- **Platform**: Kubernetes on AWS EKS
-
----
-
 
 
 

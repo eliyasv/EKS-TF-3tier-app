@@ -4,15 +4,17 @@ metadata:
   name: mongodb
   namespace: mern-app
 spec:
+  serviceName: "mongodb"
+  replicas: 1
   selector:
     matchLabels:
       app: mongodb
-  serviceName: "mongodb"
-  replicas: 1
+      env: dev
   template:
     metadata:
       labels:
         app: mongodb
+        env: dev
     spec:
       containers:
         - name: mongo

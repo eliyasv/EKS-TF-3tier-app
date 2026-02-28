@@ -3,10 +3,14 @@ kind: Service
 metadata:
   name: mongodb-svc
   namespace: mern-app
+  labels:
+    app: mongodb
+    env: dev
 spec:
   selector:
     app: mongodb
+    env: dev
   ports:
     - port: 27017
       targetPort: 27017
-  clusterIP: None  # Headless service for StatefulSet
+  clusterIP: None

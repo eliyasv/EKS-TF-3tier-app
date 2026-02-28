@@ -26,15 +26,15 @@ spec:
       imagePullSecrets:
       - name: ecr-registry-secret
       containers:
-      - name: frontend
-        image: 495599741234.dkr.ecr.us-east-1.amazonaws.com/frontend:8
-        imagePullPolicy: Always
-        env:
-          - name: REACT_APP_BACKEND_URL
-            value: "http://ignus.xyz/api/tasks"
-        ports:
-          - containerPort: 3000
-        resources:
+        - name: frontend
+          image: 495599741234.dkr.ecr.us-east-1.amazonaws.com/frontend:8
+          imagePullPolicy: Always
+          env:
+            - name: REACT_APP_BACKEND_URL
+              value: "http://ignus.xyz/api/tasks"
+          ports:
+            - containerPort: 3000
+          resources:
             requests:
               memory: "128Mi"
               cpu: "100m"

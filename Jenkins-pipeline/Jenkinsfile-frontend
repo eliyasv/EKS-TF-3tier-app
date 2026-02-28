@@ -1,14 +1,16 @@
 pipeline {
-    agent any 
+    agent any
     tools {
         nodejs 'nodejs'
     }
-    environment  {
+    environment {
         SCANNER_HOME = tool 'sonar-scanner'
         AWS_ACCOUNT_ID = credentials('ACCOUNT_ID')
-        AWS_ECR_REPO_NAME = credentials('ECR_REPO_FRONTEND')
+        AWS_ECR_REPO_NAME = 'frontend'
         AWS_DEFAULT_REGION = 'us-east-1'
         ECR_REPO_URL = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com"
+        GIT_REPO_NAME = 'EKS-TF-3tier-app'
+        GIT_USER_NAME = 'eliyasv'
     }
     stages {
         stage('Cleaning Workspace') {
@@ -25,9 +27,9 @@ pipeline {
             steps {
                 dir('App-Code/frontend') {
                     withSonarQubeEnv('sonar-server') {
-                        sh ''' $SCANNER_HOME/bin/sonar-scanner \
+                        sh '''$SCANNER_HOME/bin/sonar-scanner \
                         -Dsonar.projectName=frontend \
-                        -Dsonar.projectKey=frontend '''
+                        -Dsonar.projectKey=frontend'''
                     }
                 }
             }
@@ -35,7 +37,12 @@ pipeline {
         stage('Quality Gate') {
             steps {
                 script {
-                    waitForQualityGate abortPipeline: false, credentialsId: 'sonar-token' 
+                    timeout(time: 10, unit: 'MINUTES') {
+                        def qg = waitForQualityGate abortPipeline: false
+                        if (qg.status != 'OK') {
+                            echo "SonarQube Quality Gate failed: ${qg.status}"
+                        }
+                    }
                 }
             }
         }
@@ -50,63 +57,71 @@ pipeline {
         stage('Trivy File Scan') {
             steps {
                 dir('App-Code/frontend') {
-                    sh 'trivy fs . > trivyfs.txt'
+                    sh 'trivy fs . -f table -o trivyfs-frontend.txt'
                 }
             }
         }
-        stage("Build Docker Image") {
+        stage('Build Docker Image') {
             steps {
                 script {
                     dir('App-Code/frontend') {
-                            sh 'docker system prune -f'
-                            sh 'docker container prune -f'
-                            sh 'docker build -t $AWS_ECR_REPO_NAME .'
+                        sh 'docker system prune -f'
+                        sh 'docker container prune -f'
+                        sh "docker build -t ${ECR_REPO_URL}/${AWS_ECR_REPO_NAME}:${BUILD_NUMBER} ."
                     }
                 }
             }
         }
-        stage("Push to ECR") {
+        stage('Push to ECR') {
             steps {
                 script {
-                        sh 'aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_REPO_URL'
-                        sh 'docker tag $AWS_ECR_REPO_NAME $ECR_REPO_URL/$AWS_ECR_REPO_NAME:$BUILD_NUMBER'
-                        sh 'docker push $ECR_REPO_URL/$AWS_ECR_REPO_NAME:$BUILD_NUMBER'
+                    sh 'aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_REPO_URL'
+                    sh "docker tag ${ECR_REPO_URL}/${AWS_ECR_REPO_NAME}:${BUILD_NUMBER} ${ECR_REPO_URL}/${AWS_ECR_REPO_NAME}:${BUILD_NUMBER}"
+                    sh "docker push ${ECR_REPO_URL}/${AWS_ECR_REPO_NAME}:${BUILD_NUMBER}"
                 }
             }
         }
-        stage("Trivy Image Scan") {
+        stage('Trivy Image Scan') {
             steps {
-                sh 'trivy image $ECR_REPO_URL/$AWS_ECR_REPO_NAME:$BUILD_NUMBER > trivyimage.txt' 
-            }
-        }
-        stage('Checkout Code') {
-            steps {
-                git branch: 'main', credentialsId: 'GITHUB', url: 'https://github.com/eliyasv/EKS-TF-3tier-app.git'
+                sh "trivy image ${ECR_REPO_URL}/${AWS_ECR_REPO_NAME}:${BUILD_NUMBER} -f table -o trivyimage-frontend.txt"
             }
         }
         stage('Update Deployment file') {
-            environment {
-                GIT_REPO_NAME = "EKS-TF--MERNappcode"
-                GIT_USER_NAME = "eliyasv"
-            }
             steps {
                 dir('k8s/frontend') {
                     withCredentials([string(credentialsId: 'github', variable: 'GITHUB_TOKEN')]) {
                         sh '''
                             git config user.email "eliyasvarghese97@gmail.com"
                             git config user.name "eliyasv"
-                            BUILD_NUMBER=${BUILD_NUMBER}
-                            echo $BUILD_NUMBER
-                            imageTag=$(grep -oP '(?<=frontend:)[^ ]+' deployment.yaml)
-                            echo $imageTag
-                            sed -i "s/${AWS_ECR_REPO_NAME}:${imageTag}/${AWS_ECR_REPO_NAME}:${BUILD_NUMBER}/" deployment.yaml
+                            CURRENT_IMAGE=$(grep -oP "(?<=image: ).*" deployment.yaml)
+                            NEW_IMAGE="${ECR_REPO_URL}/${AWS_ECR_REPO_NAME}:${BUILD_NUMBER}"
+                            echo "Updating from: $CURRENT_IMAGE"
+                            echo "Updating to: $NEW_IMAGE"
+                            sed -i "s|image: .*|image: ${NEW_IMAGE}|" deployment.yaml
                             git add deployment.yaml
-                            git commit -m "Update deployment Image to version \${BUILD_NUMBER}"
-                            git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME} HEAD:main
+                            git diff --cached --quiet || {
+                                git commit -m "Update frontend deployment image to version ${BUILD_NUMBER}"
+                                git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME} HEAD:main
+                            }
                         '''
                     }
                 }
             }
+        }
+    }
+    post {
+        always {
+            cleanWs()
+            sh 'docker system prune -f'
+            sh 'docker container prune -f'
+            archiveArtifacts artifacts: '**/trivy*.txt', allowEmptyArchive: true
+            archiveArtifacts artifacts: '**/dependency-check-report.xml', allowEmptyArchive: true
+        }
+        success {
+            echo 'Pipeline completed successfully!'
+        }
+        failure {
+            echo 'Pipeline failed. Please check the logs.'
         }
     }
 }

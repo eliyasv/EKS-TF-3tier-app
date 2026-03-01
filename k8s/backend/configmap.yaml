@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backend-config
+  namespace: mern-app
+data:
+  MONGO_CONN_STR: "mongodb://mongodb-svc:27017/mern-todo?directConnection=true"
+  USE_DB_AUTH: "true"
+  PORT: "5000"

@@ -19,15 +19,19 @@ build
 .idea
 *.swp
 *.swo
+*.sublime-*
 
 # OS
 .DS_Store
 Thumbs.db
+*.tmp
+*.cache
 
 # Docker
 Dockerfile
 .dockerignore
 docker-compose*.yml
+.docker
 
 # Kubernetes
 *.yaml
@@ -36,6 +40,8 @@ docker-compose*.yml
 # Documentation
 README.md
 *.md
+docs
+LICENSE
 
 # Test coverage
 coverage
@@ -44,6 +50,23 @@ coverage
 # Logs
 logs
 *.log
+npm-debug.log*
 
 # Public folder (not needed in container)
 public
+
+# CI/CD
+.github
+.gitlab-ci.yml
+.travis.yml
+Jenkinsfile
+
+# Terraform
+*.tf
+*.tfstate
+*.tfvars
+.terraform
+
+# Misc
+*.bak
+*.orig

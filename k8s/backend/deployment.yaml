@@ -29,11 +29,10 @@ spec:
         - name: backend
           image: 495599741234.dkr.ecr.us-east-1.amazonaws.com/backend:2
           imagePullPolicy: Always
+          envFrom:
+            - configMapRef:
+                name: backend-config
           env:
-            - name: MONGO_CONN_STR
-              value: mongodb://mongodb-svc:27017/mern-todo?directConnection=true
-            - name: USE_DB_AUTH
-              value: "true"
             - name: MONGO_USERNAME
               valueFrom:
                 secretKeyRef:

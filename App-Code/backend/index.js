@@ -40,8 +40,13 @@ app.get("/ready", (req, res) => {
 });
 
 // Startup probe — fires once at container start
-app.get("/started", (req, res) => {
-  res.status(200).send("Started");
+app.get("/started", async (req, res) => {
+  const isConnected = mongoose.connection.readyState === 1;
+  if (isConnected) {
+    res.status(200).send("Started");
+  } else {
+    res.status(503).send("Starting");
+  }
 });
 
 // --- Main API Route ---

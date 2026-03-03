@@ -4,6 +4,6 @@ metadata:
   name: backend-config
   namespace: mern-app
 data:
-  MONGO_CONN_STR: "mongodb://mongodb-svc:27017/mern-todo?directConnection=true"
+  MONGO_CONN_STR: "mongodb://mongodb-svc.mern-app.svc.cluster.local:27017/mern-todo?directConnection=true"
   USE_DB_AUTH: "true"
   PORT: "5000"

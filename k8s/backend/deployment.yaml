@@ -25,10 +25,20 @@ spec:
     spec:
       imagePullSecrets:
         - name: ecr-registry-secret
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
       containers:
         - name: backend
           image: 495599741234.dkr.ecr.us-east-1.amazonaws.com/backend:2
           imagePullPolicy: Always
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
           envFrom:
             - configMapRef:
                 name: backend-config

@@ -22,16 +22,26 @@ spec:
       labels:
         app: frontend
         env: dev
-    spec: 
+    spec:
       imagePullSecrets:
-      - name: ecr-registry-secret
+        - name: ecr-registry-secret
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
       containers:
         - name: frontend
           image: 495599741234.dkr.ecr.us-east-1.amazonaws.com/frontend:8
           imagePullPolicy: Always
-          env:
-            - name: REACT_APP_BACKEND_URL
-              value: "http://ignus.xyz/api/tasks"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          envFrom:
+            - configMapRef:
+                name: frontend-config
           ports:
             - containerPort: 80
           resources:

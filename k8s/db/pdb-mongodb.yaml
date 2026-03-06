@@ -1,0 +1,14 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: mongodb-pdb
+  namespace: mern-app
+  labels:
+    app: mongodb
+    env: dev
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: mongodb
+      env: dev

@@ -1,0 +1,131 @@
+---
+# Persistent Volume Claim for backup storage
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mongodb-backup-pvc
+  namespace: mern-app
+  labels:
+    app: mongodb-backup
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: ebs-csi
+  resources:
+    requests:
+      storage: 5Gi
+---
+# Backup CronJob - Runs daily at 12AM
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: mongodb-backup
+  namespace: mern-app
+  labels:
+    app: mongodb-backup
+spec:
+  schedule: "0 12 * * *"  # Daily at 12AM
+  concurrencyPolicy: Forbid  # Prevent overlapping runs
+  successfulJobsHistoryLimit: 3  # Keep last 3 successful jobs
+  failedJobsHistoryLimit: 1  # Keep last 1 failed job
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: mongo-backup
+              image: mongo:6
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  echo "Starting MongoDB backup at $(date)"
+                  mongodump --host mongodb.mern-app.svc.cluster.local \
+                    --port 27017 \
+                    --username=$(MONGO_USERNAME) \
+                    --password=$(MONGO_PASSWORD) \
+                    --authenticationDatabase admin \
+                    --archive=/backup/mongodb-$(date +%Y%m%d-%H%M%S).gz \
+                    --gzip
+                  echo "Backup completed at $(date)"
+                  
+                  # Cleanup backups older than 7 days
+                  echo "Cleaning up old backups..."
+                  find /backup -name "mongodb-*.gz" -mtime +7 -delete
+                  echo "Cleanup completed at $(date)"
+              envFrom:
+                - secretRef:
+                    name: mongodb-secret
+              volumeMounts:
+                - name: backup-storage
+                  mountPath: /backup
+              resources:
+                requests:
+                  memory: "256Mi"
+                  cpu: "100m"
+                limits:
+                  memory: "512Mi"
+                  cpu: "500m"
+          volumes:
+            - name: backup-storage
+              persistentVolumeClaim:
+                claimName: mongodb-backup-pvc
+          restartPolicy: OnFailure
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            fsGroup: 1000
+---
+# Manual backup Job (for on-demand backups)
+# Usage: kubectl create job --from=cronjob/mongodb-backup mongodb-backup-manual -n mern-app
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: mongodb-backup-manual
+  namespace: mern-app
+  labels:
+    app: mongodb-backup
+spec:
+  template:
+    spec:
+      containers:
+        - name: mongo-backup
+          image: mongo:6
+          command:
+            - /bin/sh
+            - -c
+            - |
+              echo "Starting MongoDB manual backup at $(date)"
+              mongodump --host mongodb.mern-app.svc.cluster.local \
+                --port 27017 \
+                --username=$(MONGO_USERNAME) \
+                --password=$(MONGO_PASSWORD) \
+                --authenticationDatabase admin \
+                --archive=/backup/mongodb-manual-$(date +%Y%m%d-%H%M%S).gz \
+                --gzip
+              echo "Manual backup completed at $(date)"
+          envFrom:
+            - secretRef:
+                name: mongodb-secret
+          volumeMounts:
+            - name: backup-storage
+              mountPath: /backup
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+      volumes:
+        - name: backup-storage
+          persistentVolumeClaim:
+            claimName: mongodb-backup-pvc
+      restartPolicy: OnFailure
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+  backoffLimit: 3

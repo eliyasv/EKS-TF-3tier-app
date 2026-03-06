@@ -104,8 +104,96 @@ Characteristics:
       └─────────────┘
          │
        Response flows back to user 
+      
 
 ---
+
+### System Diagram
+
+```
+                               ┌─────────────────┐
+                               │      Users      │
+                               └────────┬────────┘
+                                        │
+                                ┌────────▼────────┐
+                                │  AWS ALB + WAF  │
+                                │  SSL/TLS (443)  │
+                                └────────┬────────┘
+                                         │
+                          ┌──────────────▼──────────────┐
+                          │     EKS Cluster (us-east-1) │
+                          └──────────────┬──────────────┘
+                                         │
+         ┌───────────────────────────────┼──────────────────────────────────┐
+         │                               │                                  │
+         ▼                               ▼                                  ▼
+┌─────────────────┐              ┌─────────────────┐              ┌─────────────────┐
+│    Frontend     │              │     Backend     │              │     MongoDB     │
+│   Deployment    │              │    Deployment   │              │    StatefulSet  │
+│   2-8 pods      │              │   2-10 pods     │              │    1 pod        │
+│   HPA + PDB     │              │   HPA + PDB     │              │    PDB + Backup │
+│   ClusterIP     │              │   ClusterIP     │              │    PVC 1Gi      │
+└────────┬────────┘              └────────┬────────┘              └────────┬────────┘
+         │                                │                                │
+         └────────────────────────────────┴────────────────────────────────┘
+                                          │
+                                          ▼
+                                 ┌─────────────────┐
+                                 │  Fluent Bit DS  │
+                                 │  (Log Agent)    │
+                                 └─────────────────┘
+```
+---
+
+
+### CI/CD Flow
+
+```
+Developer Push → GitHub → Jenkins CI → ECR → Git Commit → Argo CD → EKS
+                         │
+                         ├─→ SonarQube (Quality)
+                         ├─→ OWASP (Dependencies)
+                         ├─→ Trivy FS (Code Scan)
+                         ├─→ Trivy Image (Container Scan)
+                         └─→ Docker Build & Push
+```
+---
+
+## High Availability
+
+### Availability Targets
+
+| Component | Replicas | PDB | Expected Availability |
+|-----------|----------|-----|----------------------|
+| Frontend | 2-8 | minAvailable: 1 | 99.5% |
+| Backend | 2-10 | minAvailable: 1 | 99.5% |
+| MongoDB | 1 | maxUnavailable: 1 | 99.0% (SPOF) |
+| ALB | Managed | N/A | 99.99% |
+
+### Failure Scenarios
+
+| Scenario | Impact | Mitigation |
+|----------|--------|------------|
+| Pod failure | No downtime (HPA maintains min 2) | Auto restart |
+| Node failure | Pods rescheduled | Cluster autoscaler |
+| AZ failure | **Disruption** (single AZ) | Multi-AZ recommended |
+| MongoDB failure | **Database unavailable** | PVC persists; restore from backup |
+
+---
+### Known Limitations (Portfolio Context)
+
+| Limitation | Severity | Why Accepted |
+|------------|----------|--------------|
+| Single MongoDB replica | High | Cost vs. portfolio value |
+| Single AZ deployment | High | Cost; demonstrates concept |
+| No metrics stack | Medium | Adds complexity without real traffic |
+| Quality gates non-blocking | Medium | Development velocity |
+| No network policies | Low | Single namespace; limited exposure |
+
+**Note**: These are intentional trade-offs for a portfolio project. Production deployments should address High severity items.
+
+---
+
 
 ### Prerequisites
 

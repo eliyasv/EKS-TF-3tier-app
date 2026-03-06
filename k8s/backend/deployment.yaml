@@ -25,6 +25,21 @@ spec:
     spec:
       imagePullSecrets:
         - name: ecr-registry-secret
+      # Schedule preferentially on Spot nodes (cost optimization)
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 80
+              preference:
+                matchExpressions:
+                  - key: type
+                    operator: In
+                    values: ["spot"]
+      tolerations:
+        - key: spot
+          operator: Equal
+          value: "true"
+          effect: PreferNoSchedule
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000

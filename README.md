@@ -48,7 +48,7 @@ EKS-TF-3tier-app/
 ### App's Flow
 
     ┌──────────────────────────────────────────────────────────────┐
-    │  User clicks "Add Task" on ignus.xyz                         │
+    │  User clicks "Add Task" on your-domain.com                   │
     └──────────────────────────────────────────────────────────────┘
          │
       ┌─────────────┐
@@ -95,9 +95,9 @@ EKS-TF-3tier-app/
 ┌─────────────────┐              ┌─────────────────┐              ┌─────────────────┐
 │    Frontend     │              │     Backend     │              │     MongoDB     │
 │   Deployment    │              │    Deployment   │              │    StatefulSet  │
-│   2-8 pods      │              │   2-10 pods     │              │    1 pod        │
-│   HPA + PDB     │              │   HPA + PDB     │              │    PDB + Backup │
-│   ClusterIP     │              │   ClusterIP     │              │    PVC 1Gi      │
+│   3-8 pods      │              │   3-10 pods     │              │    3 pods       │
+│   HPA + PDB     │              │   HPA + PDB     │              │    Replica Set  │
+│   ClusterIP     │              │   ClusterIP     │              │    PVC 5Gi      │
 └────────┬────────┘              └────────┬────────┘              └────────┬────────┘
          │                                │                                │
          └────────────────────────────────┴────────────────────────────────┘
@@ -194,31 +194,34 @@ Both frontend and backend pipelines include:
 
 #### Backend Deployment
 ```yaml
-Replicas: 2
-Strategy: RollingUpdate (maxSurge: 1, maxUnavailable: 1)
+Replicas: 3
+Strategy: RollingUpdate (maxSurge: 1, maxUnavailable: 0)
 Image: ECR backend
 Port: 5000
-Node Preference: Spot nodes (weight: 80)
+Node Preference: Hybrid (OnDemand weight: 50, Spot weight: 30)
+Topology Spread: Across zones and nodes
 Security: Non-root user (1000), read-only filesystem, dropped capabilities
 ```
 
 #### Frontend Deployment
 ```yaml
-Replicas: 2
-Strategy: RollingUpdate (maxSurge: 1, maxUnavailable: 1)
+Replicas: 3
+Strategy: RollingUpdate (maxSurge: 1, maxUnavailable: 0)
 Image: ECR frontend
 Port: 80
 Node Preference: Spot nodes (weight: 80)
+Topology Spread: Across zones and nodes
 Security: Non-root user (1000), read-only filesystem, dropped capabilities
 ```
 
 ### MongoDB StatefulSet
 ```yaml
-Replicas: 1
+Replicas: 3 (Replica Set: rs0)
 Image: mongo:6
 Port: 27017
-Storage: 1Gi PVC (ebs-csi StorageClass)
+Storage: 5Gi PVC (ebs-csi StorageClass)
 Node Selector: type=ondemand
+Topology Spread: Across zones
 Security: Non-root user (999), dropped capabilities
 ```
 
@@ -226,8 +229,8 @@ Security: Non-root user (999), dropped capabilities
 
 | Component | Min Replicas | Max Replicas | CPU Target | Memory Target |
 |-----------|--------------|--------------|------------|---------------|
-| Backend | 2 | 10 | 70% | 80% |
-| Frontend | 2 | 8 | 70% | 80% |
+| Backend | 3 | 10 | 70% | 80% |
+| Frontend | 3 | 8 | 70% | 80% |
 
 **Scaling Behavior:**
 - Scale Down: 300s stabilization, 10% per 60s
@@ -237,9 +240,9 @@ Security: Non-root user (999), dropped capabilities
 
 | Component | Policy |
 |-----------|--------|
-| Backend | `minAvailable: 1` |
-| Frontend | `minAvailable: 1` |
-| MongoDB | `maxUnavailable: 1` |
+| Backend | `minAvailable: 2` |
+| Frontend | `minAvailable: 2` |
+| MongoDB | `minAvailable: 2` (defined in `k8s/db/pdb-mongodb.yaml`) |
 
 ### Ingress (AWS ALB)
 
@@ -260,8 +263,8 @@ Security: Non-root user (999), dropped capabilities
 | `/` | frontend | 80 |
 
 **Annotations:**
-- SSL certificate via ACM (placeholder, configure and update as needed)
-- WAF v2 ACL for rate limiting (place holder, configure and update )
+- SSL certificate via ACM (update `k8s/ingress.yaml` with your ACM certificate ARN)
+- WAF v2 ACL for rate limiting (update `k8s/ingress.yaml` with your WAF ACL ARN)
 - CORS configuration for API paths
 
 ---
@@ -320,7 +323,7 @@ Security: Non-root user (999), dropped capabilities
 ```yaml
 StorageClass: ebs-csi
 AccessMode: ReadWriteOnce
-Size: 1Gi
+Size: 5Gi
 VolumeClaimTemplate: mongo-persistent-storage
 ```
 
@@ -379,8 +382,9 @@ MongoDB StatefulSet includes:
 - EBS CSI Driver installed
 - Namespace created (`mern-app`)
 - Secrets created (MongoDB credentials, ECR pull secret)
-- ACM certificate ARN updated in ingress.yaml
-- WAF ACL ARN updated in ingress.yaml (if using)
+- ACM certificate ARN updated in ingress.yaml (replace `<CERTIFICATE_ID>` placeholder)
+- WAF ACL ARN updated in ingress.yaml (replace `<WAF_ACL_NAME>` placeholder)
+- Domain updated in ingress.yaml (replace `<YOUR_DOMAIN>` placeholder)
 
 ---
 
@@ -428,20 +432,19 @@ kubectl get pdb -n mern-app
 
 | Component | Availability Target | Notes |
 |-----------|---------------------|-------|
-| Frontend | 99.5% | Min 2 replicas, PDB protected |
-| Backend | 99.5% | Min 2 replicas, PDB protected |
-| MongoDB | 99.0% | Single replica (SPOF), PVC persists |
+| Frontend | 99.9% | Min 3 replicas, PDB protected, zero-downtime updates |
+| Backend | 99.9% | Min 3 replicas, PDB protected, zero-downtime updates |
+| MongoDB | 99.9% | 3-node replica set with auto-failover |
 | ALB | 99.99% | AWS managed service |
 
-### Known Limitations
+### Features Implemented
 
-| Limitation | Severity | Recommendation |
-|------------|----------|----------------|
-| Single MongoDB replica | High | Implement replica set for production |
-| Single AZ deployment | High | Multi-AZ for production workloads |
-| Non-blocking quality gates | Medium | Set `abortPipeline: true` for strict enforcement |
-| No metrics stack | Medium | Deploy Prometheus + Grafana |
-| No network policies | Low | Implement network policies for zero-trust |
+| Feature | Notes |
+|---------|-------|
+| Multi-replica MongoDB | 3-node replica set (rs0) with quorum |
+| Multi-AZ deployment | Topology spread constraints across zones |
+| Zero-downtime updates | maxUnavailable: 0 with PDB protection |
+| Pod distribution | Spread across nodes and availability zones |
 
 ---
 
@@ -470,12 +473,29 @@ kubectl apply -f k8s/db/storageclass.yaml
 # Apply all resources
 kubectl apply -f k8s/
 
+# Initialize MongoDB replica set (run once after first deploy)
+kubectl exec -it mongodb-0 -n mern-app -- mongosh --eval '
+rs.initiate({
+  _id: "rs0",
+  members: [
+    { _id: 0, host: "mongodb-0.mongodb-svc:27017" },
+    { _id: 1, host: "mongodb-1.mongodb-svc:27017" },
+    { _id: 2, host: "mongodb-2.mongodb-svc:27017" }
+  ]
+})
+'
+
 # Verify deployment
 kubectl get all -n mern-app
+
+# Check replica set status
+kubectl exec -it mongodb-0 -n mern-app -- mongosh --eval 'rs.status()'
 
 # Check ingress
 kubectl get ingress -n mern-app
 ```
+
+**Note**: The backend ConfigMap (`k8s/backend/configmap.yaml`) is pre-configured with the replica set connection string. No changes needed.
 
 ---
 #### Further improvements and sugestions 

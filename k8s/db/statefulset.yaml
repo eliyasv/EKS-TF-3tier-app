@@ -5,7 +5,7 @@ metadata:
   namespace: mern-app
 spec:
   serviceName: "mongodb"
-  replicas: 1
+  replicas: 3
   selector:
     matchLabels:
       app: mongodb
@@ -21,6 +21,7 @@ spec:
         runAsUser: 999
         runAsGroup: 999
         fsGroup: 999
+      # Spread across availability zones for HA
       topologySpreadConstraints:
         - maxSkew: 1
           topologyKey: topology.kubernetes.io/zone
@@ -52,8 +53,13 @@ spec:
             allowPrivilegeEscalation: false
             capabilities:
               drop: ["ALL"]
+          args:
+            - "--replSet"
+            - "rs0"
+            - "--bind_ip_all"
           ports:
             - containerPort: 27017
+              name: mongo
           env:
             - name: MONGO_INITDB_ROOT_USERNAME
               valueFrom:
@@ -67,11 +73,11 @@ spec:
                   key: mongodb-password
           resources:
             requests:
-              memory: "256Mi"
-              cpu: "250m"
-            limits:
               memory: "512Mi"
               cpu: "500m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
           livenessProbe:
             exec:
               command:
@@ -103,4 +109,4 @@ spec:
         storageClassName: ebs-csi
         resources:
           requests:
-            storage: 1Gi
+            storage: 5Gi

@@ -3,6 +3,9 @@ kind: Service
 metadata:
   name: backend
   namespace: mern-app
+  labels:
+    app: backend
+    env: dev
 spec:
   selector:
     app: backend
@@ -10,4 +13,5 @@ spec:
   ports:
     - port: 5000
       targetPort: 5000
+      name: http
   type: ClusterIP

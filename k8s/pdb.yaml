@@ -4,7 +4,7 @@ metadata:
   name: backend-pdb
   namespace: mern-app
 spec:
-  minAvailable: 1
+  minAvailable: 2
   selector:
     matchLabels:
       app: backend
@@ -16,7 +16,7 @@ metadata:
   name: frontend-pdb
   namespace: mern-app
 spec:
-  minAvailable: 1
+  minAvailable: 2
   selector:
     matchLabels:
       app: frontend

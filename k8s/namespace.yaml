@@ -4,3 +4,4 @@ metadata:
   name: mern-app
   labels:
     name: mern-app
+    env: dev

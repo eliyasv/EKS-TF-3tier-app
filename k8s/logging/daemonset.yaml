@@ -19,8 +19,8 @@ spec:
       serviceAccountName: fluent-bit
       containers:
         - name: fluent-bit
-          image: cr.fluentbit.io/fluent/fluent-bit:latest
-          imagePullPolicy: Always
+          image: cr.fluentbit.io/fluent/fluent-bit:3.1.8
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 2020
               name: http

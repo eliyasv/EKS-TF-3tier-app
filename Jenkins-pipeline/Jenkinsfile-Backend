@@ -89,10 +89,10 @@ pipeline {
         stage('Update Deployment file') {
             steps {
                 dir('k8s/backend') {
-                    withCredentials([string(credentialsId: 'github', variable: 'GITHUB_TOKEN')]) {
+                    withCredentials([string(credentialsId: 'github', variable: 'GITHUB_TOKEN'), string(credentialsId: 'GIT_EMAIL', variable: 'GIT_EMAIL')]) {
                         sh '''
-                            git config user.email "eliyasvarghese97@gmail.com"
-                            git config user.name "eliyasv"
+                            git config user.email "${GIT_EMAIL}"
+                            git config user.name "${GIT_USER_NAME}"
                             CURRENT_IMAGE=$(grep -oP "(?<=image: ).*" deployment.yaml)
                             NEW_IMAGE="${ECR_REPO_URL}/${AWS_ECR_REPO_NAME}:${BUILD_NUMBER}"
                             echo "Updating from: $CURRENT_IMAGE"

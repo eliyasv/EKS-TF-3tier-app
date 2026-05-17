@@ -310,7 +310,7 @@ Security: Non-root user (999), dropped capabilities
 
 ### Secret Management
 
-- MongoDB credentials stored as Kubernetes Secrets
+- MongoDB credentials stored as Kubernetes Secrets(In real prod Env it should be managed by AWS sectret manager External Secrets Operator (ESO) or Sealed Secrets.
 - ECR pull secrets for private registry access
 - AWS credentials via IAM (IRSA)
 

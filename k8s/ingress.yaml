@@ -14,7 +14,7 @@ metadata:
     alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:<AWS_ACCOUNT_ID>:certificate/<CERTIFICATE_ID>
 
     # Health Check Configuration
-    alb.ingress.kubernetes.io/healthcheck-path: /healthz
+    alb.ingress.kubernetes.io/healthcheck-path: /ready
     alb.ingress.kubernetes.io/success-codes: "200"
 
     # Rate Limiting (via AWS WAF association)

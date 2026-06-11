@@ -1,0 +1,36 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mongodb-init-config
+  namespace: mern-app
+data:
+  init-rs.sh: |
+    #!/bin/bash
+    set -e
+
+    # Wait for MongoDB to start
+    until mongosh --username "${MONGO_INITDB_ROOT_USERNAME}" --password "${MONGO_INITDB_ROOT_PASSWORD}" --authenticationDatabase admin --eval "db.adminCommand('ping')" --quiet; do
+      echo "Waiting for MongoDB to be ready..."
+      sleep 2
+    done
+
+    # Only run initialization on the first pod (index 0)
+    if [[ $(hostname) == "mongodb-0" ]]; then
+      echo "Checking ReplicaSet status..."
+      if ! mongosh --username "${MONGO_INITDB_ROOT_USERNAME}" --password "${MONGO_INITDB_ROOT_PASSWORD}" --authenticationDatabase admin --eval "rs.status()" --quiet > /dev/null 2>&1; then
+        echo "Initializing ReplicaSet..."
+        mongosh --username "${MONGO_INITDB_ROOT_USERNAME}" --password "${MONGO_INITDB_ROOT_PASSWORD}" --authenticationDatabase admin --eval "rs.initiate({
+          _id: 'rs0',
+          members: [
+            { _id: 0, host: 'mongodb-0.mongodb.mern-app.svc.cluster.local:27017' },
+            { _id: 1, host: 'mongodb-1.mongodb.mern-app.svc.cluster.local:27017' },
+            { _id: 2, host: 'mongodb-2.mongodb.mern-app.svc.cluster.local:27017' }
+          ]
+        })"
+      else
+        echo "ReplicaSet already initialized."
+      fi
+    fi
+    
+    echo "Initialization sidecar finished. Sleeping..."
+    sleep infinity

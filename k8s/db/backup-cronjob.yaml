@@ -42,8 +42,8 @@ spec:
                   echo "Starting MongoDB backup at $(date)"
                   mongodump --host mongodb.mern-app.svc.cluster.local \
                     --port 27017 \
-                    --username=$(MONGO_USERNAME) \
-                    --password=$(MONGO_PASSWORD) \
+                    --username=$MONGO_USERNAME \
+                    --password=$MONGO_PASSWORD \
                     --authenticationDatabase admin \
                     --archive=/backup/mongodb-$(date +%Y%m%d-%H%M%S).gz \
                     --gzip
@@ -53,9 +53,17 @@ spec:
                   echo "Cleaning up old backups..."
                   find /backup -name "mongodb-*.gz" -mtime +7 -delete
                   echo "Cleanup completed at $(date)"
-              envFrom:
-                - secretRef:
-                    name: mongodb-secret
+              env:
+                - name: MONGO_USERNAME
+                  valueFrom:
+                    secretKeyRef:
+                      name: mongodb-secret
+                      key: mongodb-username
+                - name: MONGO_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: mongodb-secret
+                      key: mongodb-password
               volumeMounts:
                 - name: backup-storage
                   mountPath: /backup

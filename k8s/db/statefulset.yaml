@@ -21,6 +21,16 @@ spec:
         runAsUser: 999
         runAsGroup: 999
         fsGroup: 999
+      initContainers:
+        - name: fix-keyfile-permissions
+          image: busybox
+          command: ["sh", "-c", "cp /tmp/keyfile /data/keyfile && chmod 400 /data/keyfile && chown 999:999 /data/keyfile"]
+          volumeMounts:
+            - name: keyfile-raw
+              mountPath: /tmp/keyfile
+              subPath: keyfile
+            - name: keyfile-final
+              mountPath: /data
       # Spread across availability zones for HA
       topologySpreadConstraints:
         - maxSkew: 1
@@ -57,6 +67,8 @@ spec:
             - "--replSet"
             - "rs0"
             - "--bind_ip_all"
+            - "--keyFile"
+            - "/data/keyfile"
           ports:
             - containerPort: 27017
               name: mongo
@@ -82,6 +94,12 @@ spec:
             exec:
               command:
                 - mongosh
+                - --username
+                - $(MONGO_INITDB_ROOT_USERNAME)
+                - --password
+                - $(MONGO_INITDB_ROOT_PASSWORD)
+                - --authenticationDatabase
+                - admin
                 - --eval
                 - "db.adminCommand('ping')"
             initialDelaySeconds: 30
@@ -92,6 +110,12 @@ spec:
             exec:
               command:
                 - mongosh
+                - --username
+                - $(MONGO_INITDB_ROOT_USERNAME)
+                - --password
+                - $(MONGO_INITDB_ROOT_PASSWORD)
+                - --authenticationDatabase
+                - admin
                 - --eval
                 - "db.adminCommand('ping')"
             initialDelaySeconds: 5
@@ -101,6 +125,41 @@ spec:
           volumeMounts:
             - name: mongo-persistent-storage
               mountPath: /data/db
+            - name: keyfile-final
+              mountPath: /data/keyfile
+              subPath: keyfile
+        - name: mongo-init
+          image: mongo:6
+          command: ["/bin/bash", "/scripts/init-rs.sh"]
+          env:
+            - name: MONGO_INITDB_ROOT_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: mongodb-secret
+                  key: mongodb-username
+            - name: MONGO_INITDB_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mongodb-secret
+                  key: mongodb-password
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: scripts
+              mountPath: /scripts
+      volumes:
+        - name: scripts
+          configMap:
+            name: mongodb-init-config
+            defaultMode: 0755
+        - name: keyfile-raw
+          secret:
+            secretName: mongodb-keyfile
+            defaultMode: 0400
+        - name: keyfile-final
+          emptyDir: {}
   volumeClaimTemplates:
     - metadata:
         name: mongo-persistent-storage

@@ -4,12 +4,14 @@
 A production-style 3-tier application delivery repository for AWS EKS.
 It uses Jenkins for CI, Argo CD for GitOps, and Kubernetes manifests for frontend, backend, and MongoDB deployment.
 
+> Note: This repository is a DevOps and Kubernetes deployment demo. It is not a fully self-contained local app. To run it end-to-end, you need a working EKS cluster, AWS resources, container images in ECR, MongoDB secrets, Jenkins/Argo CD configuration, and the required credentials, certificates, and placeholder values filled in for your environment.
+
 ## What this repo contains
 
 - `App-Code/` - frontend and backend application code
 - `Jenkins-pipeline/` - CI pipelines and GitOps release flow
 - `k8s/` - Kubernetes manifests for application, database, logging, networking, and GitOps
-- `docs/` - focused docs for CI/CD, Kubernetes resources, observability, security, and operations
+- `docs/` - focus docs for CI/CD, Kubernetes resources, observability, security, and operations
 
 ## Key concepts
 

@@ -11,14 +11,14 @@ metadata:
     
     # SSL/TLS Configuration
     alb.ingress.kubernetes.io/ssl-redirect: "443"
-    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:<AWS_ACCOUNT_ID>:certificate/<CERTIFICATE_ID>
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:495599741234:certificate/<CERTIFICATE_ID>
 
     # Health Check Configuration
     alb.ingress.kubernetes.io/healthcheck-path: /ready
     alb.ingress.kubernetes.io/success-codes: "200"
 
     # Rate Limiting (via AWS WAF association)
-    alb.ingress.kubernetes.io/wafv2-acl-arn: arn:aws:wafv2:us-east-1:<AWS_ACCOUNT_ID>:global/webacl/<WAF_ACL_NAME>
+    alb.ingress.kubernetes.io/wafv2-acl-arn: arn:aws:wafv2:us-east-1:495599741234:global/webacl/<WAF_ACL_NAME>
     
     # CORS for API paths
     alb.ingress.kubernetes.io/cors-allow-origin: "*"
@@ -28,10 +28,10 @@ spec:
   ingressClassName: alb
   tls:
     - hosts:
-        - <YOUR_DOMAIN>
+        - ignus.xyz #expired
       secretName: mern-tls-secret
   rules:
-    - host: <YOUR_DOMAIN>
+    - host: ignus.xyz
       http:
         paths:
           - path: /api

@@ -2,8 +2,8 @@
 FROM node:18-alpine
 
 # Create non-root user for security
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nodejs -u 1001
+RUN addgroup -g 1000 -S nodejs && \
+    adduser -S nodejs -u 1000
 
 WORKDIR /app
 

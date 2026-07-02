@@ -24,11 +24,21 @@ RUN npm run build
 # ============================================
 FROM nginx:alpine
 
-# Copy custom nginx config (optional - remove if not using custom config)
-# COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Create non-root user to align with Kubernetes securityContext
+RUN addgroup -g 1000 -S nginx && \
+    adduser -S nginx -u 1000 -G nginx
+
+# Copy custom nginx config
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # Copy built React app from builder stage
 COPY --from=builder /app/build /usr/share/nginx/html
+
+# Ensure nginx can read and write required directories
+RUN chown -R nginx:nginx /usr/share/nginx/html /var/cache/nginx /var/run /var/log/nginx
+
+# Switch to non-root user
+USER nginx
 
 # Expose port 80
 EXPOSE 80

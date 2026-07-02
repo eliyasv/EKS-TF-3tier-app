@@ -1,0 +1,40 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: mongodb-init
+  namespace: mern-app
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      serviceAccountName: default
+      containers:
+        - name: init-mongodb
+          image: mongo:6
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              until mongosh --username "${MONGO_INITDB_ROOT_USERNAME}" --password "${MONGO_INITDB_ROOT_PASSWORD}" --authenticationDatabase admin --eval "db.adminCommand('ping')" --quiet >/dev/null 2>&1; do
+                echo "Waiting for MongoDB to be ready..."
+                sleep 2
+              done
+              if mongosh --username "${MONGO_INITDB_ROOT_USERNAME}" --password "${MONGO_INITDB_ROOT_PASSWORD}" --authenticationDatabase admin --eval "rs.status()" --quiet >/dev/null 2>&1; then
+                echo "ReplicaSet already initialized."
+                exit 0
+              fi
+              echo "Initializing ReplicaSet..."
+              mongosh --username "${MONGO_INITDB_ROOT_USERNAME}" --password "${MONGO_INITDB_ROOT_PASSWORD}" --authenticationDatabase admin --eval "rs.initiate({ _id: 'rs0', members: [{ _id: 0, host: 'mongodb-0.mongodb.mern-app.svc.cluster.local:27017' }, { _id: 1, host: 'mongodb-1.mongodb.mern-app.svc.cluster.local:27017' }, { _id: 2, host: 'mongodb-2.mongodb.mern-app.svc.cluster.local:27017' }] })"
+          env:
+            - name: MONGO_INITDB_ROOT_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: mongodb-secret
+                  key: mongodb-username
+            - name: MONGO_INITDB_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mongodb-secret
+                  key: mongodb-password
+      volumes: []

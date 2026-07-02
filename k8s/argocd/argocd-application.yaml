@@ -1,0 +1,34 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: mern-app
+  namespace: argocd
+spec:
+  project: mern-app
+  source:
+    repoURL: 'https://github.com/eliyasv/EKS-TF-3tier-app'
+    targetRevision: main
+    path: 'k8s'
+    directory:
+      recurse: true
+      exclude:
+        - 'argocd'
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: mern-app
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/template/spec/containers/0/image
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/template/spec/containers/0/env

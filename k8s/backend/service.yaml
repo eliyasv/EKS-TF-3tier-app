@@ -6,6 +6,10 @@ metadata:
   labels:
     app: backend
     env: dev
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/path: "/metrics"
+    prometheus.io/port: "5000"
 spec:
   selector:
     app: backend

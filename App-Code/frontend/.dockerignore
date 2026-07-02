@@ -52,9 +52,6 @@ logs
 *.log
 npm-debug.log*
 
-# Public folder (not needed in container)
-public
-
 # CI/CD
 .github
 .gitlab-ci.yml

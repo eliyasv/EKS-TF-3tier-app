@@ -1,0 +1,18 @@
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: mongodb-keyfile
+  namespace: mern-app
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: aws-secrets-manager
+    kind: SecretStore
+  target:
+    name: mongodb-keyfile
+    creationPolicy: Owner
+  data:
+    - secretKey: keyfile
+      remoteRef:
+        key: /mern-app/mongodb/keyfile
+        property: keyfile

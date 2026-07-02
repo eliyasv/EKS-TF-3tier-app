@@ -1,0 +1,96 @@
+pipeline {
+    agent any
+    parameters {
+        string(name: 'IMAGE_TAG', defaultValue: '', description: 'Image tag created by CI, e.g. 123-abcd123')
+        choice(name: 'COMPONENT', choices: ['frontend', 'backend', 'both'], description: 'Which component manifest to update')
+        string(name: 'TARGET_BRANCH', defaultValue: 'main', description: 'Target branch for the GitOps manifest update')
+    }
+    environment {
+        AWS_ACCOUNT_ID = credentials('ACCOUNT_ID')
+        AWS_DEFAULT_REGION = 'us-east-1'
+        ECR_REPO_BASE = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com"
+        GIT_REPO_NAME = 'EKS-TF-3tier-app'
+        GIT_USER_NAME = 'eliyasv'
+    }
+    stages {
+        stage('Checkout') {
+            steps {
+                git branch: '${TARGET_BRANCH}', credentialsId: 'GITHUB', url: 'https://github.com/eliyasv/EKS-TF-3tier-app.git'
+            }
+        }
+        stage('Validate Inputs') {
+            steps {
+                script {
+                    if (!params.IMAGE_TAG?.trim()) {
+                        error 'IMAGE_TAG is required for a GitOps release.'
+                    }
+                }
+            }
+        }
+        stage('Update GitOps Manifests') {
+            steps {
+                script {
+                    def releaseBranch = "gitops-release/${COMPONENT}-${IMAGE_TAG}"
+                    sh "git checkout -b ${releaseBranch}"
+
+                    if (params.COMPONENT == 'backend' || params.COMPONENT == 'both') {
+                        dir('k8s/backend') {
+                            sh "sed -i 's|image: .*backend:.*|image: ${ECR_REPO_BASE}/backend:${IMAGE_TAG}|' deployment.yaml"
+                            sh 'git add deployment.yaml'
+                        }
+                    }
+                    if (params.COMPONENT == 'frontend' || params.COMPONENT == 'both') {
+                        dir('k8s/frontend') {
+                            sh "sed -i 's|image: .*frontend:.*|image: ${ECR_REPO_BASE}/frontend:${IMAGE_TAG}|' deployment.yaml"
+                            sh 'git add deployment.yaml'
+                        }
+                    }
+
+                    def changes = sh(script: 'git diff --cached --quiet || echo CHANGED', returnStdout: true).trim()
+                    if (!changes) {
+                        error 'No manifest changes detected. Release branch will not be created.'
+                    }
+
+                    sh "git commit -m 'GitOps release: ${COMPONENT} image ${IMAGE_TAG}'"
+                    withCredentials([string(credentialsId: 'github', variable: 'GITHUB_TOKEN')]) {
+                        sh "git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME}.git HEAD:${releaseBranch}"
+                    }
+
+                    echo "Created release branch: ${releaseBranch}"
+                    env.RELEASE_BRANCH = releaseBranch
+                }
+            }
+        }
+        stage('Create Pull Request') {
+            steps {
+                script {
+                    withCredentials([string(credentialsId: 'github', variable: 'GITHUB_TOKEN')]) {
+                        sh '''
+                            PR_PAYLOAD=$(cat <<EOF
+                            {
+                              "title": "GitOps release: ${COMPONENT} image ${IMAGE_TAG}",
+                              "head": "${RELEASE_BRANCH}",
+                              "base": "${TARGET_BRANCH}",
+                              "body": "This PR updates the Kubernetes manifests for ${COMPONENT} to use image tag ${IMAGE_TAG}."
+                            }
+                            EOF
+                            )
+                            curl -s -H "Authorization: token ${GITHUB_TOKEN}" \
+                                -H "Content-Type: application/json" \
+                                -d "${PR_PAYLOAD}" \
+                                https://api.github.com/repos/${GIT_USER_NAME}/${GIT_REPO_NAME}/pulls
+                        '''
+                    }
+                }
+            }
+        }
+    }
+    post {
+        success {
+            echo 'GitOps release pipeline completed successfully.'
+        }
+        failure {
+            echo 'GitOps release pipeline failed. Inspect the logs for details.'
+        }
+    }
+}

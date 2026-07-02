@@ -23,6 +23,23 @@ pipeline {
                 git branch: 'main', credentialsId: 'GITHUB', url: 'https://github.com/eliyasv/EKS-TF-3tier-app.git'
             }
         }
+        stage('Build Metadata') {
+            steps {
+                script {
+                    env.GIT_COMMIT_SHORT = env.GIT_COMMIT?.take(7) ?: sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
+                    env.IMAGE_TAG = "${BUILD_NUMBER}-${GIT_COMMIT_SHORT}"
+                    echo "Image tag: ${IMAGE_TAG}"
+                }
+            }
+        }
+        stage('Validate Frontend Package') {
+            steps {
+                dir('App-Code/frontend') {
+                    sh 'npm ci'
+                    sh 'npm run build'
+                }
+            }
+        }
         stage('SonarQube Analysis') {
             steps {
                 dir('App-Code/frontend') {
@@ -38,9 +55,9 @@ pipeline {
             steps {
                 script {
                     timeout(time: 10, unit: 'MINUTES') {
-                        def qg = waitForQualityGate abortPipeline: false
+                        def qg = waitForQualityGate abortPipeline: true
                         if (qg.status != 'OK') {
-                            echo "SonarQube Quality Gate failed: ${qg.status}"
+                            error "SonarQube Quality Gate failed: ${qg.status}"
                         }
                     }
                 }
@@ -65,9 +82,7 @@ pipeline {
             steps {
                 script {
                     dir('App-Code/frontend') {
-                        sh 'docker system prune -f'
-                        sh 'docker container prune -f'
-                        sh "docker build -t ${ECR_REPO_URL}/${AWS_ECR_REPO_NAME}:${BUILD_NUMBER} ."
+                        sh "docker build --pull -t ${ECR_REPO_URL}/${AWS_ECR_REPO_NAME}:${IMAGE_TAG} ."
                     }
                 }
             }
@@ -76,8 +91,7 @@ pipeline {
             steps {
                 script {
                     sh 'aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_REPO_URL'
-                    sh "docker tag ${ECR_REPO_URL}/${AWS_ECR_REPO_NAME}:${BUILD_NUMBER} ${ECR_REPO_URL}/${AWS_ECR_REPO_NAME}:${BUILD_NUMBER}"
-                    sh "docker push ${ECR_REPO_URL}/${AWS_ECR_REPO_NAME}:${BUILD_NUMBER}"
+                    sh "docker push ${ECR_REPO_URL}/${AWS_ECR_REPO_NAME}:${IMAGE_TAG}"
                 }
             }
         }
@@ -86,34 +100,10 @@ pipeline {
                 sh "trivy image ${ECR_REPO_URL}/${AWS_ECR_REPO_NAME}:${BUILD_NUMBER} -f table -o trivyimage-frontend.txt"
             }
         }
-        stage('Update Deployment file') {
-            steps {
-                dir('k8s/frontend') {
-                    withCredentials([string(credentialsId: 'github', variable: 'GITHUB_TOKEN'), string(credentialsId: 'GIT_EMAIL', variable: 'GIT_EMAIL')]) {
-                        sh '''
-                            git config user.email "${GIT_EMAIL}"
-                            git config user.name "${GIT_USER_NAME}"
-                            CURRENT_IMAGE=$(grep -oP "(?<=image: ).*" deployment.yaml)
-                            NEW_IMAGE="${ECR_REPO_URL}/${AWS_ECR_REPO_NAME}:${BUILD_NUMBER}"
-                            echo "Updating from: $CURRENT_IMAGE"
-                            echo "Updating to: $NEW_IMAGE"
-                            sed -i "s|image: .*|image: ${NEW_IMAGE}|" deployment.yaml
-                            git add deployment.yaml
-                            git diff --cached --quiet || {
-                                git commit -m "Update frontend deployment image to version ${BUILD_NUMBER}"
-                                git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME} HEAD:main
-                            }
-                        '''
-                    }
-                }
-            }
-        }
     }
     post {
         always {
             cleanWs()
-            sh 'docker system prune -f'
-            sh 'docker container prune -f'
             archiveArtifacts artifacts: '**/trivy*.txt', allowEmptyArchive: true
             archiveArtifacts artifacts: '**/dependency-check-report.xml', allowEmptyArchive: true
         }

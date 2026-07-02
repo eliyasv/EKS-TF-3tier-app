@@ -128,32 +128,7 @@ spec:
             - name: keyfile-final
               mountPath: /data/keyfile
               subPath: keyfile
-        - name: mongo-init
-          image: mongo:6
-          command: ["/bin/bash", "/scripts/init-rs.sh"]
-          env:
-            - name: MONGO_INITDB_ROOT_USERNAME
-              valueFrom:
-                secretKeyRef:
-                  name: mongodb-secret
-                  key: mongodb-username
-            - name: MONGO_INITDB_ROOT_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: mongodb-secret
-                  key: mongodb-password
-          securityContext:
-            allowPrivilegeEscalation: false
-            capabilities:
-              drop: ["ALL"]
-          volumeMounts:
-            - name: scripts
-              mountPath: /scripts
       volumes:
-        - name: scripts
-          configMap:
-            name: mongodb-init-config
-            defaultMode: 0755
         - name: keyfile-raw
           secret:
             secretName: mongodb-keyfile

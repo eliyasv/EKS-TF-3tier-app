@@ -1,0 +1,16 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: mern-app
+  namespace: argocd
+spec:
+  description: "GitOps project for the MERN 3-tier application"
+  sourceRepos:
+    - "https://github.com/eliyasv/EKS-TF-3tier-app"
+  destinations:
+    - namespace: mern-app
+      server: "https://kubernetes.default.svc"
+  clusterResourceWhitelist:
+    - group: '*'
+      kind: '*'
+  syncWindows: []

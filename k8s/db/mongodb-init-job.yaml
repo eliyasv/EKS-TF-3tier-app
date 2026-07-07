@@ -5,6 +5,9 @@ metadata:
   namespace: mern-app
 spec:
   template:
+    metadata:
+      labels:
+        app: mongodb-init
     spec:
       restartPolicy: OnFailure
       serviceAccountName: default

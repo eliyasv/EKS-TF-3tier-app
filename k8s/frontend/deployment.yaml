@@ -76,7 +76,7 @@ spec:
             capabilities:
               drop: ["ALL"]
           ports:
-            - containerPort: 80
+            - containerPort: 8080
           volumeMounts:
             - name: nginx-cache
               mountPath: /var/cache/nginx
@@ -94,7 +94,7 @@ spec:
           livenessProbe:
             httpGet:
               path: /healthz
-              port: 80
+              port: 8080
             initialDelaySeconds: 10
             periodSeconds: 10
             timeoutSeconds: 5
@@ -102,7 +102,7 @@ spec:
           readinessProbe:
             httpGet:
               path: /ready
-              port: 80
+              port: 8080
             initialDelaySeconds: 5
             periodSeconds: 5
             timeoutSeconds: 3

@@ -15,7 +15,7 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                git branch: '${TARGET_BRANCH}', credentialsId: 'GITHUB', url: 'https://github.com/eliyasv/EKS-TF-3tier-app.git'
+                git branch: "${params.TARGET_BRANCH}", credentialsId: 'GITHUB', url: 'https://github.com/eliyasv/EKS-TF-3tier-app.git'
             }
         }
         stage('Validate Inputs') {
@@ -30,18 +30,20 @@ pipeline {
         stage('Update GitOps Manifests') {
             steps {
                 script {
-                    def releaseBranch = "gitops-release/${COMPONENT}-${IMAGE_TAG}"
+                    def imageTag = params.IMAGE_TAG.trim()
+                    def component = params.COMPONENT
+                    def releaseBranch = "gitops-release/${component}-${imageTag}"
                     sh "git checkout -b ${releaseBranch}"
 
-                    if (params.COMPONENT == 'backend' || params.COMPONENT == 'both') {
+                    if (component == 'backend' || component == 'both') {
                         dir('k8s/backend') {
-                            sh "sed -i 's|image: .*backend:.*|image: ${ECR_REPO_BASE}/backend:${IMAGE_TAG}|' deployment.yaml"
+                            sh "sed -i 's|image: .*backend:.*|image: ${env.ECR_REPO_BASE}/backend:${imageTag}|' deployment.yaml"
                             sh 'git add deployment.yaml'
                         }
                     }
-                    if (params.COMPONENT == 'frontend' || params.COMPONENT == 'both') {
+                    if (component == 'frontend' || component == 'both') {
                         dir('k8s/frontend') {
-                            sh "sed -i 's|image: .*frontend:.*|image: ${ECR_REPO_BASE}/frontend:${IMAGE_TAG}|' deployment.yaml"
+                            sh "sed -i 's|image: .*frontend:.*|image: ${env.ECR_REPO_BASE}/frontend:${imageTag}|' deployment.yaml"
                             sh 'git add deployment.yaml'
                         }
                     }
@@ -51,7 +53,7 @@ pipeline {
                         error 'No manifest changes detected. Release branch will not be created.'
                     }
 
-                    sh "git commit -m 'GitOps release: ${COMPONENT} image ${IMAGE_TAG}'"
+                    sh "git commit -m 'GitOps release: ${component} image ${imageTag}'"
                     withCredentials([string(credentialsId: 'github', variable: 'GITHUB_TOKEN')]) {
                         sh "git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME}.git HEAD:${releaseBranch}"
                     }

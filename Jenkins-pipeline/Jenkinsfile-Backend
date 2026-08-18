@@ -96,7 +96,7 @@ pipeline {
         }
         stage('Trivy Image Scan') {
             steps {
-                sh "trivy image ${ECR_REPO_URL}/${AWS_ECR_REPO_NAME}:${BUILD_NUMBER} -f table -o trivyimage-backend.txt"
+                sh "trivy image ${ECR_REPO_URL}/${AWS_ECR_REPO_NAME}:${IMAGE_TAG} -f table -o trivyimage-backend.txt"
             }
         }
     }

@@ -33,6 +33,9 @@ spec:
   jobTemplate:
     spec:
       template:
+        metadata:
+          labels:
+            app: mongodb-backup
         spec:
           containers:
             - name: mongo-backup

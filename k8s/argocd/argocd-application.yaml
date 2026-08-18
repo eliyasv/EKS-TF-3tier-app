@@ -11,8 +11,7 @@ spec:
     path: 'k8s'
     directory:
       recurse: true
-      exclude:
-        - 'argocd'
+      exclude: 'argocd/*'
   destination:
     server: 'https://kubernetes.default.svc'
     namespace: mern-app
@@ -24,10 +23,6 @@ spec:
       - CreateNamespace=true
       - ApplyOutOfSyncOnly=true
   ignoreDifferences:
-    - group: apps
-      kind: Deployment
-      jsonPointers:
-        - /spec/template/spec/containers/0/image
     - group: apps
       kind: Deployment
       jsonPointers:

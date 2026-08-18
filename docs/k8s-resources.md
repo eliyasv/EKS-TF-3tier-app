@@ -33,7 +33,8 @@ This document summarizes the main Kubernetes manifests in the repository.
 
 ## Ingress
 
-- ALB ingress configuration: `k8s/ingress.yaml`
+- Dev ALB ingress configuration: `k8s/ingress.yaml`
+- Production-style ingress reference: `k8s/ingress-prod.yaml.example`
 - Health check path: `/healthz`
 
 ## Autoscaling

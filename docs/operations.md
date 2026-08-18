@@ -34,7 +34,8 @@ This document covers prerequisites, deployment checklist, maintenance, and troub
 - EBS CSI Driver installed
 - Namespace `mern-app` created
 - Secrets created or provisioned via External Secrets
-- `k8s/ingress.yaml` updated with ACM certificate ARN, WAF ACL ARN, and domain
+- `k8s/ingress.yaml` provides a dev HTTP-only ALB ingress for smooth test deployments
+- `k8s/ingress-prod.yaml.example` shows the production-style HTTPS/domain/WAF placeholders to fill before use
 
 ## GitOps workflow
 

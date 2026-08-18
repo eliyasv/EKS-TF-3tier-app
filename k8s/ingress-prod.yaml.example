@@ -4,15 +4,26 @@ metadata:
   name: mern-ingress
   namespace: mern-app
   annotations:
+    # ALB Configuration
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
-    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}]'
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+
+    # SSL/TLS Configuration
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:<AWS_ACCOUNT_ID>:certificate/<CERTIFICATE_ID>
+
+    # Health Check Configuration
     alb.ingress.kubernetes.io/healthcheck-path: /ready
     alb.ingress.kubernetes.io/success-codes: "200"
+
+    # Optional WAF association
+    # alb.ingress.kubernetes.io/wafv2-acl-arn: arn:aws:wafv2:us-east-1:<AWS_ACCOUNT_ID>:regional/webacl/<WAF_ACL_NAME>/<WAF_ACL_ID>
 spec:
   ingressClassName: alb
   rules:
-    - http:
+    - host: <APP_DOMAIN>
+      http:
         paths:
           - path: /api
             pathType: Prefix

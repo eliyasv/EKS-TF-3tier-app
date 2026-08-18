@@ -23,8 +23,6 @@ spec:
         app: frontend
         env: dev
     spec:
-      imagePullSecrets:
-        - name: ecr-registry-secret
       # Hybrid: Prefer OnDemand for stability, allow Spot for cost
       affinity:
         nodeAffinity:

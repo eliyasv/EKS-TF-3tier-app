@@ -75,9 +75,6 @@ spec:
             readOnlyRootFilesystem: true
             capabilities:
               drop: ["ALL"]
-          envFrom:
-            - configMapRef:
-                name: frontend-config
           ports:
             - containerPort: 8080
           volumeMounts:

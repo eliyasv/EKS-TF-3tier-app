@@ -24,7 +24,7 @@ It uses Jenkins for CI, Argo CD for GitOps, and Kubernetes manifests for fronten
 
 ## Quick start
 
-1. Ensure the EKS cluster and required services exist.
+1. Ensure the EKS cluster and required services exist. Install AWS Load Balancer Controller before applying `k8s/ingress.yaml`, and install Metrics Server before applying `k8s/hpa.yaml`.
 2. Apply the namespace and storage manifests if needed:
 
 ```bash

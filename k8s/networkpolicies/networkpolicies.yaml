@@ -56,6 +56,16 @@ spec:
       ports:
         - protocol: TCP
           port: 5000
+    # AWS ALB uses IP targets, so requests arrive from ALB ENIs in the VPC,
+    # not from frontend pods. Keep these CIDRs aligned with EKS-TF-infra.
+    - from:
+        - ipBlock:
+            cidr: 10.100.0.0/16
+        - ipBlock:
+            cidr: 10.200.0.0/16
+      ports:
+        - protocol: TCP
+          port: 5000
   egress:
     - to:
         - podSelector:
@@ -99,6 +109,16 @@ spec:
         - podSelector:
             matchLabels:
               app: mongodb
+      ports:
+        - protocol: TCP
+          port: 27017
+    - from:
+        - podSelector:
+            matchLabels:
+              app: mongodb-init
+        - podSelector:
+            matchLabels:
+              app: mongodb-backup
       ports:
         - protocol: TCP
           port: 27017

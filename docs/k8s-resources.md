@@ -16,7 +16,6 @@ This document summarizes the main Kubernetes manifests in the repository.
 
 - Deployment: `k8s/frontend/deployment.yaml`
 - Service: `k8s/frontend/service.yaml`
-- ConfigMap: `k8s/frontend/configmap.yaml`
 
 ## MongoDB
 

@@ -90,6 +90,21 @@ spec:
             limits:
               memory: "1Gi"
               cpu: "1000m"
+          startupProbe:
+            exec:
+              command:
+                - mongosh
+                - --username
+                - $(MONGO_INITDB_ROOT_USERNAME)
+                - --password
+                - $(MONGO_INITDB_ROOT_PASSWORD)
+                - --authenticationDatabase
+                - admin
+                - --eval
+                - "db.adminCommand('ping')"
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 30
           livenessProbe:
             exec:
               command:

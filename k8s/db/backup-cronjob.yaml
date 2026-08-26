@@ -39,7 +39,7 @@ spec:
         spec:
           containers:
             - name: mongo-backup
-              image: mongo:6
+              image: mongo:7
               command:
                 - /bin/sh
                 - -c

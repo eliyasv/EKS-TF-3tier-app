@@ -13,7 +13,7 @@ spec:
       serviceAccountName: default
       containers:
         - name: init-mongodb
-          image: mongo:6
+          image: mongo:7
           command:
             - /bin/sh
             - -c

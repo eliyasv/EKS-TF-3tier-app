@@ -58,7 +58,7 @@ spec:
                 topologyKey: kubernetes.io/hostname
       containers:
         - name: mongo
-          image: mongo:6
+          image: mongo:7
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:

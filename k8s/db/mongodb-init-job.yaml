@@ -14,6 +14,13 @@ spec:
       containers:
         - name: init-mongodb
           image: mongo:7
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 999
+            runAsGroup: 999
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
           command:
             - /bin/sh
             - -c
@@ -31,6 +38,8 @@ spec:
               echo "Initializing ReplicaSet..."
               mongosh --host "${MONGO_HOST}" --username "${MONGO_INITDB_ROOT_USERNAME}" --password "${MONGO_INITDB_ROOT_PASSWORD}" --authenticationDatabase admin --eval "rs.initiate({ _id: 'rs0', members: [{ _id: 0, host: 'mongodb-0.mongodb.mern-app.svc.cluster.local:27017' }, { _id: 1, host: 'mongodb-1.mongodb.mern-app.svc.cluster.local:27017' }, { _id: 2, host: 'mongodb-2.mongodb.mern-app.svc.cluster.local:27017' }] })"
           env:
+            - name: HOME
+              value: /tmp
             - name: MONGO_INITDB_ROOT_USERNAME
               valueFrom:
                 secretKeyRef:

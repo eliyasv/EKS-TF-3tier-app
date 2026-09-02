@@ -37,9 +37,18 @@ spec:
           labels:
             app: mongodb-backup
         spec:
+          securityContext:
+            fsGroup: 999
           containers:
             - name: mongo-backup
               image: mongo:7
+              securityContext:
+                runAsNonRoot: true
+                runAsUser: 999
+                runAsGroup: 999
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop: ["ALL"]
               command:
                 - /bin/sh
                 - -c
@@ -59,6 +68,8 @@ spec:
                   find /backup -name "mongodb-*.gz" -mtime +7 -delete
                   echo "Cleanup completed at $(date)"
               env:
+                - name: HOME
+                  value: /tmp
                 - name: MONGO_USERNAME
                   valueFrom:
                     secretKeyRef:
@@ -84,8 +95,3 @@ spec:
               persistentVolumeClaim:
                 claimName: mongodb-backup-pvc
           restartPolicy: OnFailure
-          securityContext:
-            runAsNonRoot: true
-            runAsUser: 1000
-            runAsGroup: 1000
-            fsGroup: 1000

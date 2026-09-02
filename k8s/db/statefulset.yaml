@@ -17,13 +17,18 @@ spec:
         env: dev
     spec:
       securityContext:
-        runAsNonRoot: true
-        runAsUser: 999
-        runAsGroup: 999
         fsGroup: 999
       initContainers:
         - name: fix-keyfile-permissions
           image: busybox
+          securityContext:
+            runAsNonRoot: false
+            runAsUser: 0
+            runAsGroup: 0
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+              add: ["CHOWN"]
           command: ["sh", "-c", "cp /tmp/keyfile /data/keyfile && chmod 400 /data/keyfile && chown 999:999 /data/keyfile"]
           volumeMounts:
             - name: keyfile-raw
@@ -60,6 +65,9 @@ spec:
         - name: mongo
           image: mongo:7
           securityContext:
+            runAsNonRoot: true
+            runAsUser: 999
+            runAsGroup: 999
             allowPrivilegeEscalation: false
             capabilities:
               drop: ["ALL"]

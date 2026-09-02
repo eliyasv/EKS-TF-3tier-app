@@ -9,6 +9,7 @@ function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [deletingTaskId, setDeletingTaskId] = useState(null);
+  const [updatingTaskId, setUpdatingTaskId] = useState(null);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -57,6 +58,21 @@ function App() {
     }
   };
 
+  const toggleTask = async (task) => {
+    try {
+      setUpdatingTaskId(task._id);
+      setError('');
+      const res = await axios.patch(`/api/tasks/${task._id}`, {
+        completed: !task.completed,
+      });
+      setTasks(tasks.map((item) => (item._id === task._id ? res.data : item)));
+    } catch (err) {
+      setError('Could not update the task. Please try again.');
+    } finally {
+      setUpdatingTaskId(null);
+    }
+  };
+
   return (
     <div className="app-shell">
       <main className="todo-panel">
@@ -84,7 +100,9 @@ function App() {
         ) : (
           <TaskList
             tasks={tasks}
+            onToggle={toggleTask}
             onDelete={deleteTask}
+            updatingTaskId={updatingTaskId}
             deletingTaskId={deletingTaskId}
           />
         )}

@@ -10,7 +10,22 @@ function App() {
   const [isSaving, setIsSaving] = useState(false);
   const [deletingTaskId, setDeletingTaskId] = useState(null);
   const [updatingTaskId, setUpdatingTaskId] = useState(null);
+  const [filter, setFilter] = useState('all');
   const [error, setError] = useState('');
+
+  const filterOptions = [
+    { value: 'all', label: 'All' },
+    { value: 'active', label: 'Active' },
+    { value: 'completed', label: 'Completed' },
+  ];
+
+  const filteredTasks = tasks.filter((task) => {
+    if (filter === 'active') return !task.completed;
+    if (filter === 'completed') return task.completed;
+    return true;
+  });
+
+  const activeTaskCount = tasks.filter((task) => !task.completed).length;
 
   useEffect(() => {
     const loadTasks = async () => {
@@ -98,13 +113,40 @@ function App() {
         ) : tasks.length === 0 ? (
           <p className="status-message">No tasks yet.</p>
         ) : (
-          <TaskList
-            tasks={tasks}
-            onToggle={toggleTask}
-            onDelete={deleteTask}
-            updatingTaskId={updatingTaskId}
-            deletingTaskId={deletingTaskId}
-          />
+          <>
+            <div className="task-toolbar">
+              <div className="filter-tabs" role="group" aria-label="Task filters">
+                {filterOptions.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    className={`filter-tab ${
+                      filter === option.value ? 'filter-tab-active' : ''
+                    }`}
+                    onClick={() => setFilter(option.value)}
+                    aria-pressed={filter === option.value}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+              <span className="task-count">
+                {activeTaskCount} {activeTaskCount === 1 ? 'active task' : 'active tasks'}
+              </span>
+            </div>
+
+            {filteredTasks.length === 0 ? (
+              <p className="status-message">No {filter} tasks.</p>
+            ) : (
+              <TaskList
+                tasks={filteredTasks}
+                onToggle={toggleTask}
+                onDelete={deleteTask}
+                updatingTaskId={updatingTaskId}
+                deletingTaskId={deletingTaskId}
+              />
+            )}
+          </>
         )}
       </main>
     </div>

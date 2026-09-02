@@ -87,9 +87,34 @@
   background: #fff;
 }
 
-.task-item span {
+.task-item-completed {
+  background: #f8fafc;
+}
+
+.task-toggle {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  cursor: pointer;
+}
+
+.task-toggle input {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  accent-color: #2563eb;
+}
+
+.task-toggle span {
   overflow-wrap: anywhere;
   color: #172033;
+}
+
+.task-item-completed .task-toggle span {
+  color: #64748b;
+  text-decoration: line-through;
 }
 
 .task-item button {

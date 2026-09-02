@@ -27,6 +27,31 @@ router.post("/", async (req, res, next) => {
   }
 });
 
+router.patch("/:id", async (req, res, next) => {
+  if (typeof req.body.completed !== "boolean") {
+    return res.status(400).json({ error: "Completed status must be true or false" });
+  }
+
+  try {
+    const task = await Task.findByIdAndUpdate(
+      req.params.id,
+      { completed: req.body.completed },
+      { new: true, runValidators: true }
+    );
+
+    if (!task) {
+      return res.status(404).json({ error: "Task not found" });
+    }
+
+    res.json(task);
+  } catch (error) {
+    if (error.name === "CastError") {
+      return res.status(400).json({ error: "Invalid task id" });
+    }
+    next(error);
+  }
+});
+
 router.delete("/:id", async (req, res, next) => {
   try {
     const task = await Task.findByIdAndDelete(req.params.id);

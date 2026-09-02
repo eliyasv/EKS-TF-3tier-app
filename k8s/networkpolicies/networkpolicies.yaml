@@ -1,3 +1,6 @@
+# Note: EKS does not enforce Kubernetes NetworkPolicy objects by default.
+# Enable a network policy engine such as AWS VPC CNI network policy support,
+# Calico, or Cilium if you want these rules to be enforced.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:

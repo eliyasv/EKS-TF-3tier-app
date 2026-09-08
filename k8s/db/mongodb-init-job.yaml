@@ -5,28 +5,41 @@ metadata:
   namespace: mern-app
 spec:
   template:
+    metadata:
+      labels:
+        app: mongodb-init
     spec:
       restartPolicy: OnFailure
       serviceAccountName: default
       containers:
         - name: init-mongodb
-          image: mongo:6
+          image: mongo:7
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 999
+            runAsGroup: 999
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
           command:
             - /bin/sh
             - -c
             - |
               set -e
-              until mongosh --username "${MONGO_INITDB_ROOT_USERNAME}" --password "${MONGO_INITDB_ROOT_PASSWORD}" --authenticationDatabase admin --eval "db.adminCommand('ping')" --quiet >/dev/null 2>&1; do
+              MONGO_HOST="mongodb-0.mongodb.mern-app.svc.cluster.local:27017"
+              until mongosh --host "${MONGO_HOST}" --username "${MONGO_INITDB_ROOT_USERNAME}" --password "${MONGO_INITDB_ROOT_PASSWORD}" --authenticationDatabase admin --eval "db.adminCommand('ping')" --quiet >/dev/null 2>&1; do
                 echo "Waiting for MongoDB to be ready..."
                 sleep 2
               done
-              if mongosh --username "${MONGO_INITDB_ROOT_USERNAME}" --password "${MONGO_INITDB_ROOT_PASSWORD}" --authenticationDatabase admin --eval "rs.status()" --quiet >/dev/null 2>&1; then
+              if mongosh --host "${MONGO_HOST}" --username "${MONGO_INITDB_ROOT_USERNAME}" --password "${MONGO_INITDB_ROOT_PASSWORD}" --authenticationDatabase admin --eval "rs.status()" --quiet >/dev/null 2>&1; then
                 echo "ReplicaSet already initialized."
                 exit 0
               fi
               echo "Initializing ReplicaSet..."
-              mongosh --username "${MONGO_INITDB_ROOT_USERNAME}" --password "${MONGO_INITDB_ROOT_PASSWORD}" --authenticationDatabase admin --eval "rs.initiate({ _id: 'rs0', members: [{ _id: 0, host: 'mongodb-0.mongodb.mern-app.svc.cluster.local:27017' }, { _id: 1, host: 'mongodb-1.mongodb.mern-app.svc.cluster.local:27017' }, { _id: 2, host: 'mongodb-2.mongodb.mern-app.svc.cluster.local:27017' }] })"
+              mongosh --host "${MONGO_HOST}" --username "${MONGO_INITDB_ROOT_USERNAME}" --password "${MONGO_INITDB_ROOT_PASSWORD}" --authenticationDatabase admin --eval "rs.initiate({ _id: 'rs0', members: [{ _id: 0, host: 'mongodb-0.mongodb.mern-app.svc.cluster.local:27017' }, { _id: 1, host: 'mongodb-1.mongodb.mern-app.svc.cluster.local:27017' }, { _id: 2, host: 'mongodb-2.mongodb.mern-app.svc.cluster.local:27017' }] })"
           env:
+            - name: HOME
+              value: /tmp
             - name: MONGO_INITDB_ROOT_USERNAME
               valueFrom:
                 secretKeyRef:

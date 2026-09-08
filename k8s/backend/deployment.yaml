@@ -23,8 +23,6 @@ spec:
         app: backend
         env: dev
     spec:
-      imagePullSecrets:
-        - name: ecr-registry-secret
       # Hybrid: Prefer OnDemand for stability, allow Spot for cost
       affinity:
         nodeAffinity:
@@ -52,7 +50,7 @@ spec:
               env: dev
         - maxSkew: 1
           topologyKey: kubernetes.io/hostname
-          whenUnsatisfiable: DoNotSchedule
+          whenUnsatisfiable: ScheduleAnyway
           labelSelector:
             matchLabels:
               app: backend

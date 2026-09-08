@@ -28,9 +28,10 @@ This repository favors external secret management for production.
 - External Secrets manifests are under `k8s/external-secrets/`
 - Use AWS Secrets Manager for MongoDB credentials and keyfile
 - Avoid storing static secrets in Git
+- The companion `EKS-TF-infra` project creates an IRSA role for the External Secrets Operator service account: `system:serviceaccount:external-secrets:external-secrets`
+- `k8s/external-secrets/aws-secretstore.yaml` relies on that IRSA role instead of a static AWS access key secret
 
 ### Secrets referenced by manifests
 
 - `mongodb-secret` for database username/password
 - `mongodb-keyfile` for replica set authentication
-- `aws-credentials` for External Secrets controller authentication (recommend IRSA in production)

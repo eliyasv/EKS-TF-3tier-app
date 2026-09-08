@@ -23,8 +23,6 @@ spec:
         app: frontend
         env: dev
     spec:
-      imagePullSecrets:
-        - name: ecr-registry-secret
       # Hybrid: Prefer OnDemand for stability, allow Spot for cost
       affinity:
         nodeAffinity:
@@ -51,7 +49,7 @@ spec:
               env: dev
         - maxSkew: 1
           topologyKey: kubernetes.io/hostname
-          whenUnsatisfiable: DoNotSchedule
+          whenUnsatisfiable: ScheduleAnyway
           labelSelector:
             matchLabels:
               app: frontend
@@ -75,11 +73,15 @@ spec:
             readOnlyRootFilesystem: true
             capabilities:
               drop: ["ALL"]
-          envFrom:
-            - configMapRef:
-                name: frontend-config
           ports:
-            - containerPort: 80
+            - containerPort: 8080
+          volumeMounts:
+            - name: nginx-cache
+              mountPath: /var/cache/nginx
+            - name: nginx-run
+              mountPath: /var/run
+            - name: nginx-tmp
+              mountPath: /tmp
           resources:
             requests:
               memory: "128Mi"
@@ -90,7 +92,7 @@ spec:
           livenessProbe:
             httpGet:
               path: /healthz
-              port: 80
+              port: 8080
             initialDelaySeconds: 10
             periodSeconds: 10
             timeoutSeconds: 5
@@ -98,9 +100,16 @@ spec:
           readinessProbe:
             httpGet:
               path: /ready
-              port: 80
+              port: 8080
             initialDelaySeconds: 5
             periodSeconds: 5
             timeoutSeconds: 3
             successThreshold: 1
+      volumes:
+        - name: nginx-cache
+          emptyDir: {}
+        - name: nginx-run
+          emptyDir: {}
+        - name: nginx-tmp
+          emptyDir: {}
       terminationGracePeriodSeconds: 30

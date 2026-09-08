@@ -17,13 +17,18 @@ spec:
         env: dev
     spec:
       securityContext:
-        runAsNonRoot: true
-        runAsUser: 999
-        runAsGroup: 999
         fsGroup: 999
       initContainers:
         - name: fix-keyfile-permissions
           image: busybox
+          securityContext:
+            runAsNonRoot: false
+            runAsUser: 0
+            runAsGroup: 0
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+              add: ["CHOWN"]
           command: ["sh", "-c", "cp /tmp/keyfile /data/keyfile && chmod 400 /data/keyfile && chown 999:999 /data/keyfile"]
           volumeMounts:
             - name: keyfile-raw
@@ -58,8 +63,11 @@ spec:
                 topologyKey: kubernetes.io/hostname
       containers:
         - name: mongo
-          image: mongo:6
+          image: mongo:7
           securityContext:
+            runAsNonRoot: true
+            runAsUser: 999
+            runAsGroup: 999
             allowPrivilegeEscalation: false
             capabilities:
               drop: ["ALL"]
@@ -90,38 +98,33 @@ spec:
             limits:
               memory: "1Gi"
               cpu: "1000m"
+          startupProbe:
+            tcpSocket:
+              port: mongo
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 60
           livenessProbe:
-            exec:
-              command:
-                - mongosh
-                - --username
-                - $(MONGO_INITDB_ROOT_USERNAME)
-                - --password
-                - $(MONGO_INITDB_ROOT_PASSWORD)
-                - --authenticationDatabase
-                - admin
-                - --eval
-                - "db.adminCommand('ping')"
-            initialDelaySeconds: 30
+            tcpSocket:
+              port: mongo
             periodSeconds: 10
             timeoutSeconds: 5
-            failureThreshold: 3
+            failureThreshold: 6
           readinessProbe:
             exec:
               command:
-                - mongosh
-                - --username
-                - $(MONGO_INITDB_ROOT_USERNAME)
-                - --password
-                - $(MONGO_INITDB_ROOT_PASSWORD)
-                - --authenticationDatabase
-                - admin
-                - --eval
-                - "db.adminCommand('ping')"
-            initialDelaySeconds: 5
+                - /bin/sh
+                - -ec
+                - |
+                  exec mongosh --quiet \
+                    --username "$MONGO_INITDB_ROOT_USERNAME" \
+                    --password "$MONGO_INITDB_ROOT_PASSWORD" \
+                    --authenticationDatabase admin \
+                    --eval "db.adminCommand('ping')"
             periodSeconds: 5
             timeoutSeconds: 3
             successThreshold: 1
+            failureThreshold: 3
           volumeMounts:
             - name: mongo-persistent-storage
               mountPath: /data/db

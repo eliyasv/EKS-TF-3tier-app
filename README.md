@@ -24,7 +24,13 @@ It uses Jenkins for CI, Argo CD for GitOps, and Kubernetes manifests for fronten
 
 ## Quick start
 
-1. Ensure the EKS cluster and required services exist.
+1. Ensure the EKS cluster and required post-cluster add-ons exist:
+
+- AWS Load Balancer Controller before applying `k8s/ingress.yaml`
+- External Secrets Operator before deploying MongoDB secrets and database workloads
+- Metrics Server before applying `k8s/hpa.yaml`
+- Cluster Autoscaler if you want EKS nodes to scale when HPA creates unschedulable pods
+
 2. Apply the namespace and storage manifests if needed:
 
 ```bash

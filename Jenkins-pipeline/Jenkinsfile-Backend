@@ -35,7 +35,7 @@ pipeline {
         stage('Validate Backend Package') {
             steps {
                 dir('App-Code/backend') {
-                    sh 'npm ci --only=production'
+                    sh 'npm ci --omit=dev'
                 }
             }
         }

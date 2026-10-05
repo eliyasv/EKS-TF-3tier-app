@@ -37,6 +37,33 @@ This document covers prerequisites, deployment checklist, maintenance, and troub
 - `k8s/ingress.yaml` provides a dev HTTP-only ALB ingress for smooth test deployments
 - `k8s/ingress-prod.yaml.example` shows the production-style HTTPS/domain/WAF placeholders to fill before use
 
+### Verify worker placement before installing MongoDB
+
+Run from a host connected to the EKS cluster:
+
+```bash
+kubectl get nodes -l type=ondemand -L topology.kubernetes.io/zone
+kubectl get nodes -l type=spot -L topology.kubernetes.io/zone
+```
+
+Require at least three schedulable, Ready on-demand workers, with one in each of
+`us-east-1a`, `us-east-1b`, and `us-east-1c`, and enough allocatable capacity for
+MongoDB and system pods. Three configured subnets do not confirm worker placement.
+Also require Ready Spot workers with enough capacity for frontend/backend pods
+and rolling updates.
+
+MongoDB requires separate worker nodes and spreads its three members across at
+least three eligible zones. If capacity is missing, members remain Pending instead
+of sharing a worker or violating zone spread. Each member has its own EBS PVC;
+existing volumes remain tied to their provisioned AZ.
+
+Frontend and backend require nodes labelled `type=spot` and remain Pending when
+Spot capacity is unavailable. After deployment, verify actual placement:
+
+```bash
+kubectl get pods -n mern-app -o wide
+```
+
 ## GitOps workflow
 
 1. Build and push frontend/backend images via Jenkins CI

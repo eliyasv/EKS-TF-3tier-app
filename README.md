@@ -13,6 +13,7 @@ It uses Jenkins for CI, Argo CD for GitOps, and Kubernetes manifests for fronten
 - `k8s/` - Kubernetes manifests for application, database, logging, networking, and GitOps
 - `observability/` - Helm values for the monitoring stack
 - `docs/` - focus docs for CI/CD, Kubernetes resources, observability, security, and operations
+- `asets/` - screenshots from the completed deployment
 
 ## Key concepts
 
@@ -25,6 +26,79 @@ It uses Jenkins for CI, Argo CD for GitOps, and Kubernetes manifests for fronten
 - MongoDB requires on-demand workers across three eligible AZs; application workloads require Spot workers
 - Prometheus scrapes backend metrics; Grafana provides dashboards and Alertmanager receives alerts
 - Metrics Server supplies HPA resource metrics independently of Prometheus
+
+## Completed deployment
+
+These screenshots show the application and monitoring stack during the completed deployment. The cluster was subsequently destroyed after testing.
+
+### Application
+
+The Todo UI shows saved tasks and completed items served through the application ingress.
+
+![Todo application with saved and completed tasks](asets/todoapp.png)
+
+### GitOps deployment
+
+The MERN application is **Synced and Healthy**, with frontend/backend replicas, MongoDB, ingress, and Fluent Bit resources visible.
+
+![MERN application synced and healthy in Argo CD](asets/argocd-app-mernapp.png)
+
+<details>
+<summary>Monitoring application in Argo CD</summary>
+
+The separate monitoring application is **Synced and Healthy**, with Prometheus, Grafana, Alertmanager, and exporters running.
+
+![Monitoring application synced and healthy in Argo CD](asets/argocd-app-monitoring.png)
+
+</details>
+
+<details>
+<summary>Jenkins CI and GitOps release pipelines</summary>
+
+The backend and frontend runs completed package validation, SonarQube analysis and quality gates, Trivy scans, Docker builds, and ECR pushes. Successful execution of a scan stage does not imply the image has no vulnerabilities.
+
+![Successful backend CI pipeline and passed SonarQube quality gate](asets/jenkins-backend.png)
+
+![Successful frontend CI pipeline and passed SonarQube quality gate](asets/jenkins-frontend.png)
+
+The latest successful release runs updated GitOps manifests and created pull requests. Earlier failed attempts remain visible in the build history.
+
+![Jenkins release pipeline with successful manifest update and pull request creation](asets/jenkins-releasepipeline.png)
+
+</details>
+
+### Metrics and logs
+
+The Kubernetes dashboard shows CPU and memory usage for the `mern-app` namespace, alongside resource requests and limits.
+
+![Grafana Kubernetes namespace dashboard for MERN workloads](asets/grafana-dashboard.png)
+
+<details>
+<summary>Centralized CloudWatch logging</summary>
+
+The application log group has **one-week retention** and streams for frontend, backend, and MongoDB containers.
+
+![CloudWatch application log group with container streams and one-week retention](asets/cloudwatch-logstreams.png)
+
+</details>
+
+<details>
+<summary>Alert delivery test</summary>
+
+`MonitoringSmokeTest` is visible in Alertmanager, demonstrating delivery from Prometheus. The receiver is `null`; external email/webhook notifications were not configured.
+
+![Monitoring smoke-test alert received by Alertmanager](asets/alertmanagersmoketest.png)
+
+</details>
+
+<details>
+<summary>MongoDB backup restore verification</summary>
+
+Two task documents were verified in the separate `mern-todo-restore-test` database, including the backup test task.
+
+![MongoDB restore verification showing two restored task documents](asets/backup-restored.png)
+
+</details>
 
 ## Quick start
 
@@ -79,6 +153,7 @@ Jenkins-pipeline/
 k8s/
 observability/
 docs/
+asets/
 README.md
 ```
 

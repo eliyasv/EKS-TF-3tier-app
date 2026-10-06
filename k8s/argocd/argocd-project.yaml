@@ -10,6 +10,8 @@ spec:
   destinations:
     - namespace: mern-app
       server: "https://kubernetes.default.svc"
+    - namespace: logging
+      server: "https://kubernetes.default.svc"
   clusterResourceWhitelist:
     - group: '*'
       kind: '*'

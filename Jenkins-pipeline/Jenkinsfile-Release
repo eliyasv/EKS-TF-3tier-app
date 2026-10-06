@@ -54,34 +54,75 @@ pipeline {
                     }
 
                     sh "git commit -m 'GitOps release: ${component} image ${imageTag}'"
-                    withCredentials([string(credentialsId: 'github', variable: 'GITHUB_TOKEN')]) {
-                        sh "git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME}.git HEAD:${releaseBranch}"
+                    env.RELEASE_BRANCH = releaseBranch
+                    withCredentials([usernamePassword(credentialsId: 'GITHUB',
+                        usernameVariable: 'GITHUB_USERNAME', passwordVariable: 'GITHUB_TOKEN')]) {
+                        sh '''
+                            set +x
+                            set -eu
+                            RELEASE_AUTH_DIR=$(mktemp -d)
+                            trap 'rm -f "$RELEASE_AUTH_DIR/askpass"; rmdir "$RELEASE_AUTH_DIR"' EXIT
+                            cat > "$RELEASE_AUTH_DIR/askpass" <<'ASKPASS'
+                            #!/bin/sh
+                            case "$1" in
+                                *Username*) printf '%s\\n' "$GITHUB_USERNAME" ;;
+                                *Password*) printf '%s\\n' "$GITHUB_TOKEN" ;;
+                                *) exit 1 ;;
+                            esac
+                            ASKPASS
+                            chmod 700 "$RELEASE_AUTH_DIR/askpass"
+                            export GIT_ASKPASS="$RELEASE_AUTH_DIR/askpass"
+                            export GIT_TERMINAL_PROMPT=0
+                            git -c credential.helper= push \
+                                "https://github.com/${GIT_USER_NAME}/${GIT_REPO_NAME}.git" \
+                                "HEAD:$RELEASE_BRANCH"
+                        '''.stripIndent()
                     }
 
                     echo "Created release branch: ${releaseBranch}"
-                    env.RELEASE_BRANCH = releaseBranch
                 }
             }
         }
         stage('Create Pull Request') {
             steps {
                 script {
-                    withCredentials([string(credentialsId: 'github', variable: 'GITHUB_TOKEN')]) {
+                    withCredentials([usernamePassword(credentialsId: 'GITHUB',
+                        usernameVariable: 'GITHUB_USERNAME', passwordVariable: 'GITHUB_TOKEN')]) {
                         sh '''
-                            PR_PAYLOAD=$(cat <<EOF
-                            {
-                              "title": "GitOps release: ${COMPONENT} image ${IMAGE_TAG}",
-                              "head": "${RELEASE_BRANCH}",
-                              "base": "${TARGET_BRANCH}",
-                              "body": "This PR updates the Kubernetes manifests for ${COMPONENT} to use image tag ${IMAGE_TAG}."
-                            }
-                            EOF
-                            )
-                            curl -s -H "Authorization: token ${GITHUB_TOKEN}" \
-                                -H "Content-Type: application/json" \
-                                -d "${PR_PAYLOAD}" \
-                                https://api.github.com/repos/${GIT_USER_NAME}/${GIT_REPO_NAME}/pulls
-                        '''
+                            set +x
+                            set -eu
+                            umask 077
+                            PR_REQUEST_DIR=$(mktemp -d)
+                            trap 'rm -f "$PR_REQUEST_DIR/payload.json" "$PR_REQUEST_DIR/response.json"; rmdir "$PR_REQUEST_DIR"' EXIT
+                            python3 - <<'PY' > "$PR_REQUEST_DIR/payload.json"
+                            import json
+                            import os
+                            component = os.environ["COMPONENT"]
+                            tag = os.environ["IMAGE_TAG"].strip()
+                            print(json.dumps({
+                                "title": f"GitOps release: {component} image {tag}",
+                                "head": os.environ["RELEASE_BRANCH"],
+                                "base": os.environ["TARGET_BRANCH"],
+                                "body": f"This PR updates the Kubernetes manifests for {component} to use image tag {tag}."
+                            }))
+                            PY
+                            printf 'header = "Authorization: Bearer %s"\\n' "$GITHUB_TOKEN" |
+                                curl --config - --fail-with-body --silent --show-error \
+                                    --request POST \
+                                    --header "Content-Type: application/json" \
+                                    --data-binary "@$PR_REQUEST_DIR/payload.json" \
+                                    --output "$PR_REQUEST_DIR/response.json" \
+                                    "https://api.github.com/repos/${GIT_USER_NAME}/${GIT_REPO_NAME}/pulls"
+                            python3 - "$PR_REQUEST_DIR/response.json" <<'PY'
+                            import json
+                            import sys
+                            with open(sys.argv[1]) as response:
+                                result = json.load(response)
+                            if not result.get("number") or not result.get("html_url"):
+                                raise SystemExit("GitHub response did not confirm PR creation.")
+                            print("Created pull request:", result["html_url"])
+                            PY
+                        '''.stripIndent()
                     }
                 }
             }

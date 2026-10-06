@@ -59,7 +59,7 @@ spec:
         fsGroup: 1000
       containers:
         - name: frontend
-          image: 495599741234.dkr.ecr.us-east-1.amazonaws.com/frontend:8
+          image: 495599741234.dkr.ecr.us-east-1.amazonaws.com/frontend:4-0db0328
           imagePullPolicy: Always
           securityContext:
             allowPrivilegeEscalation: false

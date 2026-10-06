@@ -2,6 +2,10 @@
 
 This document covers prerequisites, deployment checklist, maintenance, and troubleshooting.
 
+For the full manual bootstrap checklist, see [redeployment](redeployment.md).
+For ordered deletion, see [teardown](teardown.md). Monitoring and SSM access are in
+[observability](observability.md).
+
 ## Prerequisites
 
 ### Cluster
@@ -19,7 +23,7 @@ This document covers prerequisites, deployment checklist, maintenance, and troub
 
 ### AWS
 - ECR repositories: `frontend`, `backend`
-- ACM certificate for TLS
+- ACM certificate for HTTPS (optional for the current HTTP-only dev ingress)
 - WAF v2 WebACL (optional)
 - IAM roles/policies for EKS nodes
 

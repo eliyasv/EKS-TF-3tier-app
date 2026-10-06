@@ -6,9 +6,7 @@ to `LoadBalancer` created a Classic Load Balancer. It kept public subnets and th
 internet gateway attached after EKS deletion. Its security group and the manually
 created jump-server group then blocked VPC deletion.
 
-These steps delete database data and monitoring history. Save
-[portfolio evidence](portfolio-evidence.md), dashboard JSON, and any database
-backup you want to preserve first. Keep the state bucket and locking resources
+These steps delete database data and monitoring history. Save dashboard JSON and any database backup you want to preserve first. Keep the state bucket and locking resources
 until teardown is complete; retain them for future redeployments if desired.
 
 ## 1. Inventory while EKS is live
@@ -164,7 +162,7 @@ Jenkins/SonarQube is separately provisioned: save its configuration/logs before
 terminating it and inspect its disk deletion settings. Manually created MongoDB
 Secrets Manager values are not deleted by Terraform. Retain if needed for saved
 data, otherwise schedule deletion with a recovery window (for example seven
-days) rather than immediate force deletion. ECR images and evidence can be kept
+days) rather than immediate force deletion. ECR images can be kept
 for redeployment. Delete backend resources only as an explicit final retirement
 step after all relevant states/resources are accounted for.
 

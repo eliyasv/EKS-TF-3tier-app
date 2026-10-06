@@ -58,8 +58,7 @@ retained resources where appropriate rather than creating duplicates.
 9. Bootstrap monitoring and Grafana credentials using [observability](observability.md).
    Verify all three backend scrape targets, dashboard queries, and the warning
    smoke-test alert. External notifications are optional and are not configured.
-10. Save [portfolio evidence](portfolio-evidence.md). Before deleting resources,
-    follow [teardown](teardown.md).
+10. Before deleting resources, follow [teardown](teardown.md).
 
 ## Supporting guides
 

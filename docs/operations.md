@@ -3,8 +3,7 @@
 This document covers prerequisites, deployment checklist, maintenance, and troubleshooting.
 
 For the full manual bootstrap checklist, see [redeployment](redeployment.md).
-For evidence capture and ordered deletion, see [portfolio evidence](portfolio-evidence.md)
-and [teardown](teardown.md). Monitoring and SSM access are in
+For ordered deletion, see [teardown](teardown.md). Monitoring and SSM access are in
 [observability](observability.md).
 
 ## Prerequisites

@@ -227,18 +227,13 @@ latency is seconds (0.27 seconds = 270 ms). An empty `{}` label set is expected
 for aggregation across replicas. Zero errors is normal; `or vector(0)` also
 returns zero when there is no matching series, so verify scrape targets too.
 
-Generate todo traffic, choose a time range covering it, and capture the panels.
+Generate todo traffic and choose a time range covering it to verify the panels.
 Export/download the custom dashboard JSON through Grafana's dashboard export
 controls and save it locally before deleting Grafana. It is stored on the
 Grafana PVC, not automatically in Git. Built-in dashboard names vary; search
 for Kubernetes Namespace (Pods), Pod, and Node Exporter dashboards.
 
-See [redeployment prerequisites](redeployment.md), [portfolio evidence](portfolio-evidence.md),
-and [ordered teardown](teardown.md).
-
-Portfolio evidence: Kubernetes dashboard filtered to `mern-app`, backend targets
-UP, request-rate/latency queries under traffic, the test alert firing, and the
-monitoring Application synced with ready Pods and Bound PVCs.
+See [redeployment prerequisites](redeployment.md) and [ordered teardown](teardown.md).
 
 References: [chart documentation](https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack)
 and [Argo CD multiple sources](https://argo-cd.readthedocs.io/en/stable/user-guide/multiple_sources/).

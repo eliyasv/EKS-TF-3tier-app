@@ -87,11 +87,27 @@ Grafana uses a ClusterIP Service and has no public ingress. On the jump server:
 kubectl port-forward -n monitoring svc/monitoring-grafana 3000:80
 ```
 
-On your laptop, in a separate terminal, substitute your usual jump-host/key:
+On your laptop, use AWS CLI credentials with permission to start an SSM
+port-forwarding session and the Session Manager plugin. The browser SSM shell
+alone cannot forward ports to your laptop. No SSH key is required.
 
 ```bash
-ssh -i /path/to/key.pem -N -L 3000:127.0.0.1:3000 ubuntu@<jump-host-address>
+aws --version
+session-manager-plugin --version
+aws sts get-caller-identity
+aws ssm start-session \
+  --region us-east-1 \
+  --target "<JUMP_INSTANCE_ID>" \
+  --document-name AWS-StartPortForwardingSession \
+  --parameters '{"portNumber":["3000"],"localPortNumber":["3000"]}'
 ```
+
+Use the current jump instance ID, not the ID from a previous deployment. Keep
+both the jump-server `kubectl port-forward` and laptop SSM tunnel running.
+If the plugin is missing, follow the [AWS installation guide](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html).
+On CachyOS/Arch, the AUR package used in this deployment was installed with
+`paru -S aws-session-manager-plugin` (or `yay -S aws-session-manager-plugin`).
+Review the package build instructions when prompted.
 
 Open `http://localhost:3000`, username `admin`. Retrieve your password on the
 jump server and keep it out of screenshots:
@@ -120,7 +136,21 @@ policy tightening must preserve monitoring access.
 For targets/rules, port-forward `svc/monitoring-kube-prometheus-prometheus`
 from local port 9090 to service port 9090. For Alertmanager, port-forward
 `svc/monitoring-kube-prometheus-alertmanager` on port 9093 to 9093. Tunnel these
-ports through SSH in the same way as Grafana.
+ports through separate SSM sessions in the same way as Grafana, changing both
+`portNumber` and `localPortNumber` to 9090 or 9093. For Alertmanager:
+
+```bash
+# Jump server, in a separate SSM shell:
+kubectl port-forward -n monitoring svc/monitoring-kube-prometheus-alertmanager 9093:9093
+# Laptop, in a separate terminal:
+aws ssm start-session \
+  --region us-east-1 \
+  --target "<JUMP_INSTANCE_ID>" \
+  --document-name AWS-StartPortForwardingSession \
+  --parameters '{"portNumber":["9093"],"localPortNumber":["9093"]}'
+```
+
+Open `http://localhost:9093`.
 
 ## Test an alert without interrupting workloads
 
@@ -143,15 +173,28 @@ spec:
           expr: vector(1)
           for: 1m
           labels:
-            severity: info
+            severity: warning
           annotations:
             summary: Temporary test of Prometheus and Alertmanager
 YAML
 ```
 
 Allow a few minutes for discovery, evaluation, and delivery to Alertmanager.
-Verify the alert is Firing in Prometheus and visible in Alertmanager, then remove
-only the temporary rule:
+In Grafana Explore, run `ALERTS{alertname="MonitoringSmokeTest"}`. In an
+instant query, expect `alertstate="firing"` with value 1 after the one-minute
+pending period. Clear filters in Alertmanager and confirm the test alert is
+visible. Watchdog is a separate always-firing built-in alert.
+
+The test uses `warning` because InfoInhibitor suppresses `info` alerts. If an
+alert is firing but hidden in the UI, check the API from another jump-server
+shell while the port-forward is running:
+
+```bash
+curl -sS http://127.0.0.1:9093/api/v2/alerts | python3 -m json.tool
+```
+
+`inhibitedBy` and state `suppressed` mean Alertmanager received the alert but
+inhibition is active. Once verified, remove only the temporary rule:
 
 ```bash
 kubectl delete prometheusrule monitoring-smoke-test -n monitoring
@@ -160,6 +203,38 @@ kubectl delete prometheusrule monitoring-smoke-test -n monitoring
 Alertmanager initially has an empty (`null`) receiver: alerts are visible but
 no email, Slack, or webhook notification is sent. Configure a receiver with
 credentials in a Secret as a follow-up, then test notification delivery.
+
+## Custom application dashboard
+
+In Grafana, choose Dashboards → New dashboard → Add visualization, select
+Prometheus, and use Code mode to enter each panel's query. Save the dashboard
+as `MERN Application Overview`.
+
+- Backend scrape targets (Stat): `sum(up{namespace="mern-app",service="backend"})`.
+  Expect 3. This measures scrape availability, not MongoDB connectivity.
+- Requests/second (Time series): use the request-rate query above.
+- p95 latency (Time series, unit seconds): use the histogram query above.
+- Application 5xx errors/second (Time series):
+
+```promql
+sum(rate(todo_app_http_requests_total{namespace="mern-app",route!~"/metrics|/healthz|/ready|/started",status=~"5.."}[5m])) or vector(0)
+```
+
+Use one query per panel. Copy plain query text with straight quotes and `!~`
+without a backslash. An unterminated quoted string error means the editor
+received incomplete or malformed query text. Request rate is requests/second;
+latency is seconds (0.27 seconds = 270 ms). An empty `{}` label set is expected
+for aggregation across replicas. Zero errors is normal; `or vector(0)` also
+returns zero when there is no matching series, so verify scrape targets too.
+
+Generate todo traffic, choose a time range covering it, and capture the panels.
+Export/download the custom dashboard JSON through Grafana's dashboard export
+controls and save it locally before deleting Grafana. It is stored on the
+Grafana PVC, not automatically in Git. Built-in dashboard names vary; search
+for Kubernetes Namespace (Pods), Pod, and Node Exporter dashboards.
+
+See [redeployment prerequisites](redeployment.md), [portfolio evidence](portfolio-evidence.md),
+and [ordered teardown](teardown.md).
 
 Portfolio evidence: Kubernetes dashboard filtered to `mern-app`, backend targets
 UP, request-rate/latency queries under traffic, the test alert firing, and the

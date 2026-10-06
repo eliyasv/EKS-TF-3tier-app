@@ -25,8 +25,8 @@ RUN npm run build
 FROM nginx:alpine
 
 # Create non-root user to align with Kubernetes securityContext
-RUN addgroup -g 1000 -S nginx && \
-    adduser -S nginx -u 1000 -G nginx
+RUN addgroup -g 1000 -S appgroup && \
+    adduser -S appuser -u 1000 -G appgroup
 
 # Copy custom nginx config
 COPY nginx.conf /etc/nginx/conf.d/default.conf
@@ -35,10 +35,10 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=builder /app/build /usr/share/nginx/html
 
 # Ensure nginx can read and write required directories
-RUN chown -R nginx:nginx /usr/share/nginx/html /var/cache/nginx /var/run /var/log/nginx
+RUN chown -R appuser:appgroup /usr/share/nginx/html /var/cache/nginx /var/run /var/log/nginx /run
 
 # Switch to non-root user
-USER nginx
+USER appuser
 
 # Expose non-privileged HTTP port
 EXPOSE 8080

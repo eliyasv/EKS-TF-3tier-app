@@ -103,9 +103,9 @@ pipeline {
     }
     post {
         always {
-            cleanWs()
             archiveArtifacts artifacts: '**/trivy*.txt', allowEmptyArchive: true
             archiveArtifacts artifacts: '**/dependency-check-report.xml', allowEmptyArchive: true
+            cleanWs()
         }
         success {
             echo 'Pipeline completed successfully!'

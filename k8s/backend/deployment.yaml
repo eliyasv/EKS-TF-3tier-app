@@ -23,19 +23,12 @@ spec:
         app: backend
         env: dev
     spec:
-      # Hybrid: Prefer OnDemand for stability, allow Spot for cost
+      # Run application workloads on Spot workers.
       affinity:
         nodeAffinity:
-          preferredDuringSchedulingIgnoredDuringExecution:
-            - weight: 50
-              preference:
-                matchExpressions:
-                  - key: type
-                    operator: In
-                    values: ["ondemand"]
-            - weight: 30
-              preference:
-                matchExpressions:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
                   - key: type
                     operator: In
                     values: ["spot"]

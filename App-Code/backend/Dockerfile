@@ -1,26 +1,22 @@
 # Backend Dockerfile - Production Ready
 FROM node:18-alpine
 
-# Create non-root user for security
-RUN addgroup -g 1000 -S nodejs && \
-    adduser -S nodejs -u 1000
-
 WORKDIR /app
 
 # Copy package files first for better layer caching
 COPY package*.json ./
 
 # Install production dependencies only
-RUN npm ci --only=production && npm cache clean --force
+RUN npm ci --omit=dev && npm cache clean --force
 
 # Copy application code
 COPY . .
 
-# Change ownership to non-root user
-RUN chown -R nodejs:nodejs /app
+# Change ownership to the built-in non-root node user
+RUN chown -R node:node /app
 
 # Switch to non-root user
-USER nodejs
+USER node
 
 # Document the port
 EXPOSE 5000

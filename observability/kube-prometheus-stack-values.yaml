@@ -1,0 +1,178 @@
+# Single-replica monitoring for the learning cluster; not an HA installation.
+# Managed EKS does not expose these control-plane scrape endpoints.
+kubeEtcd:
+  enabled: false
+kubeControllerManager:
+  enabled: false
+kubeScheduler:
+  enabled: false
+kubeProxy:
+  enabled: false
+defaultRules:
+  rules:
+    etcd: false
+    kubeControllerManager: false
+    kubeSchedulerAlerting: false
+    kubeSchedulerRecording: false
+    kubeProxy: false
+
+prometheusOperator:
+  # Avoid chart-managed certificate hooks in Argo CD for this lab bootstrap.
+  admissionWebhooks:
+    enabled: false
+  tls:
+    enabled: false
+  nodeSelector:
+    type: ondemand
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      memory: 512Mi
+
+prometheus:
+  ingress:
+    enabled: false
+  prometheusSpec:
+    replicas: 1
+    retention: 7d
+    retentionSize: 8GB
+    scrapeInterval: 30s
+    evaluationInterval: 30s
+    nodeSelector:
+      type: ondemand
+    resources:
+      requests:
+        cpu: 250m
+        memory: 768Mi
+      limits:
+        memory: 2Gi
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: ebs-csi
+          accessModes: [ReadWriteOnce]
+          resources:
+            requests:
+              storage: 10Gi
+  additionalServiceMonitors:
+    - name: mern-backend
+      namespaceSelector:
+        matchNames: [mern-app]
+      selector:
+        matchLabels:
+          app: backend
+          env: dev
+      endpoints:
+        - port: http
+          path: /metrics
+          interval: 30s
+
+grafana:
+  admin:
+    existingSecret: monitoring-grafana-admin
+    userKey: admin-user
+    passwordKey: admin-password
+  service:
+    type: ClusterIP
+  ingress:
+    enabled: false
+  nodeSelector:
+    type: ondemand
+  persistence:
+    enabled: true
+    storageClassName: ebs-csi
+    accessModes: [ReadWriteOnce]
+    size: 5Gi
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 512Mi
+
+alertmanager:
+  ingress:
+    enabled: false
+  # Alerts are visible in the UI. Configure a receiver separately for delivery.
+  config:
+    global:
+      resolve_timeout: 5m
+    route:
+      receiver: "null"
+      group_by: [namespace, alertname]
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 12h
+    receivers:
+      - name: "null"
+  alertmanagerSpec:
+    replicas: 1
+    nodeSelector:
+      type: ondemand
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        memory: 256Mi
+    storage:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: ebs-csi
+          accessModes: [ReadWriteOnce]
+          resources:
+            requests:
+              storage: 2Gi
+
+kube-state-metrics:
+  nodeSelector:
+    type: ondemand
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      memory: 256Mi
+prometheus-node-exporter:
+  resources:
+    requests:
+      cpu: 50m
+      memory: 32Mi
+    limits:
+      memory: 128Mi
+
+additionalPrometheusRulesMap:
+  mern-workloads:
+    groups:
+      - name: mern-workloads
+        rules:
+          - alert: MERNDeploymentUnavailable
+            expr: kube_deployment_status_replicas_available{namespace="mern-app",deployment=~"backend|frontend"} < kube_deployment_spec_replicas{namespace="mern-app",deployment=~"backend|frontend"}
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: 'Deployment {{ $labels.deployment }} has unavailable replicas'
+          - alert: MongoDBReplicaUnavailable
+            expr: kube_statefulset_status_replicas_ready{namespace="mern-app",statefulset="mongodb"} < kube_statefulset_replicas{namespace="mern-app",statefulset="mongodb"}
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: MongoDB StatefulSet has unavailable replicas
+          - alert: MongoDBBackupJobFailed
+            expr: kube_job_failed{namespace="mern-app",job_name=~"mongodb-backup.*",condition="true"} == 1
+            for: 1m
+            labels:
+              severity: warning
+            annotations:
+              summary: 'Backup Job {{ $labels.job_name }} has failed'
+          - alert: MERNBackendHighErrorRate
+            expr: sum(rate(todo_app_http_requests_total{namespace="mern-app",route!~"/metrics|/healthz|/ready|/started",status=~"5.."}[5m])) / clamp_min(sum(rate(todo_app_http_requests_total{namespace="mern-app",route!~"/metrics|/healthz|/ready|/started"}[5m])), 0.001) > 0.05
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: Backend API HTTP 5xx error rate exceeds 5 percent

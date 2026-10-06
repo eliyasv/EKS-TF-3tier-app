@@ -24,7 +24,7 @@ data:
     [INPUT]
         Name              tail
         Tag               kube.*
-        Path              /var/log/containers/*.log
+        Path              /var/log/containers/*_mern-app_*.log
         Parser            cri
         DB                /var/log/flb_kube.db
         Mem_Buf_Limit     50MB
@@ -46,19 +46,13 @@ data:
 
   output.conf: |
     [OUTPUT]
-        Name            stdout
-        Match           *
-
-    # Uncomment below to send logs to Elasticsearch
-    # [OUTPUT]
-    #     Name            es
-    #     Match           *
-    #     Host            elasticsearch.logging.svc.cluster.local
-    #     Port            9200
-    #     Logstash_Format On
-    #     Logstash_Prefix kubernetes-logs
-    #     Replace_Dots    On
-    #     Retry_Limit     False
+        Name              cloudwatch_logs
+        Match             kube.*
+        region            ${AWS_REGION}
+        log_group_name    ${CLOUDWATCH_LOG_GROUP}
+        log_stream_prefix fluent-bit-
+        auto_create_group false
+        Retry_Limit       False
 
   parsers.conf: |
     [PARSER]

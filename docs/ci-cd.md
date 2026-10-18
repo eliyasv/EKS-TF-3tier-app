@@ -56,5 +56,5 @@ Required tooling:
 
 - `ACCOUNT_ID` — AWS account ID
 - `GITHUB` — GitHub repo credentials
-- `github` — GitHub token for commits
+- The release job also uses `GITHUB` as username/password, with a personal access token in its password field. No separate lowercase `github` credential is required.
 - `sonar-server` — SonarQube server configuration

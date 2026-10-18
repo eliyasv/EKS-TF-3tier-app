@@ -1,4 +1,4 @@
-# Frontend Dockerfile - Production Ready (Multi-Stage Build)
+# Frontend Dockerfile - Multi-Stage Build for the learning deployment
 
 # ============================================
 # Stage 1: Build the React Application

@@ -35,7 +35,10 @@ This document summarizes the main Kubernetes manifests in the repository.
 
 - Dev ALB ingress configuration: `k8s/ingress.yaml`
 - Production-style ingress reference: `k8s/ingress-prod.yaml.example`
-- Health check path: `/healthz`
+- ALB health check path: `/ready`. Backend `/healthz` is liveness; `/ready`
+  checks the database connection, and `/started` is the startup endpoint.
+- Frontend Service port 80 targets Nginx port 8080. Backend uses port 5000
+  through its ConfigMap; backend source alone defaults to 3000 if PORT is omitted.
 
 ## Autoscaling
 
@@ -44,6 +47,9 @@ This document summarizes the main Kubernetes manifests in the repository.
 ## Network and security
 
 - NetworkPolicies: `k8s/networkpolicies/networkpolicies.yaml`
+- These objects need an enforcing network configuration. The frontend ingress
+  currently allows 80 while the pod listens on 8080; correct/test that mismatch
+  before enabling enforcement. Backend ingress also allows the configured VPC CIDRs.
 - Pod Disruption Budgets: `k8s/pdb.yaml`, `k8s/db/pdb-mongodb.yaml`
 
 ## GitOps

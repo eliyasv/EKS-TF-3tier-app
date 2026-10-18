@@ -72,7 +72,8 @@ kubectl get pods -n mern-app -o wide
 
 1. Build and push frontend/backend images via Jenkins CI
 2. Run the release pipeline to update `k8s/` manifests and open a PR
-3. Argo CD syncs the cluster state from Git
+3. Review and merge/promote the PR into main, which Argo CD watches
+4. Argo CD syncs the cluster state from Git
 
 ## Troubleshooting
 
@@ -91,6 +92,11 @@ kubectl get pdb -n mern-app
 - 3-node MongoDB replica set
 - PDBs to protect availability
 - Topology spread and anti-affinity across zones
+
+These are configured resilience mechanisms, not proof of zero downtime. All
+frontend/backend replicas can share the available Spot worker; placement rules
+do not guarantee those replicas survive its loss. MongoDB replica health was
+checked in the previous deployment; comprehensive failure tests remain follow-up work.
 
 ## Notes
 
